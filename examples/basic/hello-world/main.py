@@ -11,6 +11,7 @@ from fastapi import Query
 from injector import Injector
 
 from fastapi_keystone.config import ConfigModule
+from fastapi_keystone.core.di import AppInjector, get_app_injector
 from fastapi_keystone.core.response import APIResponse
 from fastapi_keystone.core.routing import group, router
 from fastapi_keystone.core.server import Server
@@ -46,9 +47,9 @@ class IndexController:
 def main():
     """应用主入口"""
     # 创建配置（使用默认配置）
-    injector = Injector([ConfigModule("config.json")])
+    injector = AppInjector([ConfigModule("config.json")])
     # 创建服务器
-    server = injector.get(Server)
+    server = injector.get_instance(Server)
 
     async def on_startup(app, config):
         print("🚀 启动 FastAPI Keystone Hello World 应用...")
@@ -59,6 +60,7 @@ def main():
     app = (
         server.on_startup(on_startup)
         .on_shutdown(on_shutdown)
+        .enable_tenant_middleware()
         .setup_api(injector, [IndexController])
     )
 

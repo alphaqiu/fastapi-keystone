@@ -8,12 +8,13 @@ from fastapi.datastructures import Default
 from fastapi.routing import APIRoute
 from fastapi.types import IncEx
 from fastapi.utils import generate_unique_id
-from injector import Injector
 from pydantic import BaseModel, ConfigDict
 from starlette.middleware import Middleware
 from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute
 from typing_extensions import Doc
+
+from fastapi_keystone.core.di import AppInjector
 
 
 class RouteConfig(BaseModel):
@@ -542,13 +543,13 @@ def bind_method_to_instance(method, instance):
     return wrapper
 
 
-def register_controllers(app: FastAPI, injector: Injector, controllers: List[Any]):
+def register_controllers(app: FastAPI, injector: AppInjector, controllers: List[Any]):
     """
     遍历所有控制器类，发现并注册路由
     """
     for controller_class in controllers:
         # 使用 DI 容器实例化控制器
-        controller_instance = injector.get(controller_class)
+        controller_instance = injector.get_instance(controller_class)
 
         group_info: Dict[str, Any] = getattr(controller_class, "_group_info", {})
         group_prefix: str = group_info.get("prefix", "") or ""

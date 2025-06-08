@@ -2,8 +2,8 @@ from typing import Literal
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
-from injector import Injector
 
+from fastapi_keystone.core.di import AppInjector
 from fastapi_keystone.core.routing import group, register_controllers, router
 
 app = FastAPI()
@@ -28,7 +28,7 @@ class CustomController:
 
 
 def test_routing():
-    injector = Injector()
+    injector = AppInjector([])
     register_controllers(app, injector, [CustomController])
     client = TestClient(app)
     response = client.get("/api/test")

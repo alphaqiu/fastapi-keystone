@@ -7,10 +7,11 @@ from typing import Any, Awaitable, Callable, List, Optional, Tuple, Type
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from injector import Injector, inject
+from injector import inject
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from fastapi_keystone.config.config import Config
+from fastapi_keystone.core.di import AppInjector
 from fastapi_keystone.core.exceptions import (
     APIException,
     api_exception_handler,
@@ -18,6 +19,7 @@ from fastapi_keystone.core.exceptions import (
     http_exception_handler,
     validation_exception_handler,
 )
+from fastapi_keystone.core.middleware import TenantMiddleware
 from fastapi_keystone.core.routing import register_controllers
 
 logger = getLogger(__name__)
@@ -58,6 +60,11 @@ class Server:
             self._on_shutdown.append(func)
         return self
 
+    def enable_tenant_middleware(self) -> "Server":
+        """启用租户中间件"""
+        self._middlewares.append((TenantMiddleware, [], {}))
+        return self
+
     def add_middleware(
         self, middleware_class: Type[BaseHTTPMiddleware], *args: Any, **kwargs: Any
     ) -> "Server":
@@ -65,7 +72,7 @@ class Server:
         self._middlewares.append((middleware_class, args, kwargs))
         return self
 
-    def setup_api(self, injector: Injector, controllers: List[Any]) -> FastAPI:
+    def setup_api(self, injector: AppInjector, controllers: List[Any]) -> FastAPI:
         logger.info("Setting up API")
         self.app = FastAPI(
             title=self.config.server.title,
