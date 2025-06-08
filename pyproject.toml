@@ -1,18 +1,18 @@
 [project]
 name = "fastapi-keystone"
-version = "0.0.1"
-description = "基于fastapi的快速开发框架"
+version = "0.0.2"
+description = "🚀 基于 FastAPI 的现代化快速开发框架，提供企业级的多租户、依赖注入、路由管理等特性"
 readme = "README.md"
 requires-python = ">=3.13"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "alpha", email = "alphaqiu@gmail.com"}
 ]
 keywords = ["fastapi", "framework", "mvc", "async", "orm"]
+
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -32,6 +32,13 @@ dependencies = [
     "rich>=14.0.0",
     "sqlalchemy>=2.0.41",
 ]
+
+[project.urls]
+Homepage = "https://github.com/alphaqiu/fastapi-keystone"
+Documentation = "https://github.com/alphaqiu/fastapi-keystone#readme"
+Repository = "https://github.com/alphaqiu/fastapi-keystone"
+Issues = "https://github.com/alphaqiu/fastapi-keystone/issues"
+Changelog = "https://github.com/alphaqiu/fastapi-keystone/releases"
 
 [dependency-groups]
 dev = [
@@ -57,6 +64,15 @@ tag = true
 push = true
 files = [
     "pyproject.toml",
+]
+# 让 bumpver 同步 [project] version 字段
+search = [
+    '^version = "{version}"',  # 匹配 [project] 里的 version
+    '^current_version = "{version}"'  # 匹配 [bumpver] 里的 current_version
+]
+replace = [
+    'version = "{new_version}"',
+    'current_version = "{new_version}"'
 ]
 
 [tool.pytest.ini_options]

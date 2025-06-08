@@ -1,5 +1,3 @@
-import asyncio
-
 from injector import Module, provider, singleton
 
 from .config import (
@@ -20,7 +18,7 @@ class ConfigModule(Module):
     @singleton
     def config(self) -> Config:
         # injector 不支持 异步provider
-        return asyncio.run(load_config(config_path=self._config_path))
+        return load_config(config_path=self._config_path)
 
 
 __all__ = [

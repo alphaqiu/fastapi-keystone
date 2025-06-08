@@ -1,54 +1,155 @@
 # fastapi-keystone 项目开发规则（cursorrules）
 
-## 1. 目录结构与包布局
-- 采用 src 布局，主代码位于 `src/` 目录下。
-- 配置相关代码位于 `src/config/`。
-- 通用代码可放在 `src/common/`，核心业务逻辑建议放在 `src/core/`。
-- 测试代码位于项目根目录下的 `tests/`，与 `src/` 同级。
-- 配置文件如 `config.example.json` 放在项目根目录。
+## 1. 项目概述
+- **fastapi-keystone** 是基于 FastAPI 的快速开发框架 SDK 项目
+- 采用契约优先、模式驱动的开发方式
+- 支持多租户、依赖注入、异步处理等企业级特性
+- 发布到 PyPI，供其他项目引用
 
-## 2. 依赖与环境
-- 依赖管理采用 `pyproject.toml`，生产依赖和开发依赖分组管理。
-- 推荐使用 `uv` 工具进行虚拟环境和依赖操作。
-- Python 版本要求：`>=3.13`。
+## 2. 目录结构与包布局
+```
+fastapi-keystone/
+├── src/
+│   └── fastapi_keystone/          # 主包（注意下划线）
+│       ├── __init__.py
+│       ├── config/               # 配置管理
+│       ├── core/                 # 核心组件
+│       │   ├── server.py        # FastAPI 服务器
+│       │   ├── routing.py       # 路由管理
+│       │   ├── exceptions.py    # 异常处理
+│       │   ├── response.py      # 响应封装
+│       │   ├── middleware.py    # 中间件
+│       │   └── db.py           # 数据库连接
+│       └── common/              # 通用工具
+├── tests/                       # 测试代码（与 src 同级）
+├── docs/                        # 项目文档
+├── pyproject.toml               # 项目配置
+├── MANIFEST.in                  # 打包清单
+├── LICENSE                      # MIT 许可证
+├── README.md                    # 项目说明
+├── config.example.json          # 配置示例
+└── main.py                      # 入口文件（示例）
+```
 
-## 3. 配置管理
-- 配置采用 Pydantic v2 + pydantic-settings 实现，所有配置项均有类型注解。
-- 支持多数据库（多租户）配置，`databases` 字段为动态映射，必须包含 `default` 键。
-- 配置加载支持 JSON 文件、环境变量、.env 文件，优先级为：传参 > 配置文件 > 环境变量。
-- 配置模型示例：
-  - `Config` 主配置类，包含 `server`、`logger`、`databases` 等字段。
-  - `DatabasesConfig` 继承自 `RootModel[Dict[str, DatabaseConfig]]`，动态支持多数据库。
+**重要约定：**
+- 包名使用 `fastapi_keystone`（下划线），项目名使用 `fastapi-keystone`（连字符）
+- 所有业务代码位于 `src/fastapi_keystone/` 下
+- 测试代码位于项目根目录的 `tests/`，与 `src/` 同级
 
-## 4. 代码风格与规范
-- 遵循 PEP8、PEP484、PEP517、PEP621。
-- 代码格式化工具：`black`。
-- 代码静态检查工具：`ruff`、`isort`。
-- 变量、函数、类命名规范：
-  - 变量/函数：snake_case
-  - 类名：PascalCase
-  - 常量：UPPER_SNAKE_CASE
-- 公共函数、类需添加 docstring，复杂逻辑需有单行注释。
-- 推荐使用类型提示（Type Hints）。
+## 3. 依赖与环境管理
+- **Python 版本**：`>=3.13`
+- **包管理器**：`uv`（虚拟环境、依赖安装、构建、发布）
+- **依赖配置**：使用 `pyproject.toml` 的 `[dependency-groups]` 分组管理
+  - 生产依赖：FastAPI、Pydantic、SQLAlchemy、injector 等
+  - 开发依赖：pytest、black、ruff、bumpver、twine 等
 
-## 5. 测试
-- 测试框架：pytest，异步测试用 pytest-asyncio。
-- 测试目录为 `tests/`，测试文件以 `test_*.py` 命名。
-- 测试用例导入主包时，使用 `from config.config import ...`，并确保 `PYTHONPATH=src`。
-- 推荐在项目根目录下运行 `uv run pytest`。
-- 配置 `pyproject.toml` 的 pytest 选项，`pythonpath = ["src"]`。
+**常用命令：**
+```bash
+uv sync                    # 同步所有依赖
+uv run pytest             # 运行测试
+uv run pytest --cov=src   # 运行覆盖率测试
+uv build                  # 构建包
+uv run twine upload dist/* # 发布到 PyPI
+```
 
-## 6. 打包与分发
-- 打包采用 PEP517/621 标准，配置在 `pyproject.toml`。
-- 仅 `src/` 下的包会被打包，`tests/` 不会被包含。
-- 发布前请确保所有依赖、配置、文档齐全。
+## 4. 配置管理
+- **技术栈**：Pydantic v2 + pydantic-settings
+- **配置加载**：支持 JSON 文件、环境变量、.env 文件
+- **多租户支持**：`databases` 字段动态映射多数据库配置
+- **配置模型**：
+  - `Config`：主配置类（server、logger、databases）
+  - `DatabasesConfig`：继承 `RootModel[Dict[str, DatabaseConfig]]`
+  - `DatabaseConfig`：单个数据库配置
+  - 必须包含 `default` 数据库配置
 
-## 7. 其他约定
-- 配置、代码、文档需保持同步，变更需及时更新文档。
-- 代码生成、模式驱动优先，减少手写样板代码。
-- 所有包内导入使用绝对导入。
-- 项目内如需添加新模块，建议先定义模式（schema），再生成实现。
+**配置优先级**：传参 > 配置文件 > 环境变量 > 默认值
+
+## 5. 代码规范与质量
+- **代码风格**：遵循 PEP8、PEP484、PEP517、PEP621
+- **格式化工具**：`black`
+- **静态检查**：`ruff`、`isort`
+- **命名约定**：
+  - 变量/函数：`snake_case`
+  - 类名：`PascalCase`
+  - 常量：`UPPER_SNAKE_CASE`
+  - 文件/目录：`snake_case`
+- **文档要求**：
+  - 公共函数、类需添加 docstring
+  - 复杂逻辑需有单行注释
+  - 使用类型提示（Type Hints）
+
+## 6. 测试策略
+- **测试框架**：pytest + pytest-asyncio + pytest-cov
+- **测试目录**：`tests/`，测试文件以 `test_*.py` 命名
+- **运行方式**：`uv run pytest`（项目根目录）
+- **覆盖率测试**：`uv run pytest --cov=src --cov-report=html`
+- **导入规范**：
+  ```python
+  from fastapi_keystone.config.config import Config
+  from fastapi_keystone.core.server import Server
+  ```
+- **pytest 配置**：`pyproject.toml` 中设置 `pythonpath = ["src"]`
+
+## 7. 架构设计
+- **核心组件**：
+  - `Server`：FastAPI 应用封装，支持生命周期管理
+  - `Router`：路由装饰器，支持类级别路由定义
+  - `APIException`：统一异常处理
+  - `APIResponse`：标准化响应格式
+- **依赖注入**：使用 `injector` 库实现 DI 容器
+- **中间件支持**：可扩展的中间件系统
+- **异步优先**：全面支持 async/await
+
+## 8. 版本管理与发布
+- **版本管理工具**：`bumpver`
+- **版本模式**：语义化版本号（MAJOR.MINOR.PATCH）
+- **版本递增**：
+  ```bash
+  bumpver update --patch  # 修订版本
+  bumpver update --minor  # 次版本
+  bumpver update --major  # 主版本
+  ```
+- **自动化**：bumpver 会同步更新 `pyproject.toml` 中的 version 字段
+- **Git 集成**：自动 commit、tag、push
+
+## 9. 打包与分发
+- **构建标准**：PEP517/621 标准
+- **打包工具**：`uv build`
+- **打包控制**：
+  - `MANIFEST.in`：控制 sdist 包含的文件
+  - `tool.setuptools.packages.find`：控制 wheel 包含的包
+  - 排除测试文件和缓存文件
+- **分发平台**：PyPI
+- **发布流程**：
+  1. 更新版本：`bumpver update --patch`
+  2. 构建包：`uv build`
+  3. 发布：`uv run twine upload dist/*`
+
+## 10. 调试与开发
+- **VSCode 配置**：`.vscode/launch.json` 支持 pytest 调试
+- **IDE 调试**：推荐使用 VSCode 测试资源管理器进行单步调试
+- **日志记录**：使用 `rich` 库美化输出
+- **开发服务器**：`uvicorn` 用于本地开发
+
+## 11. 文档与示例
+- **文档目录**：`docs/` 存放项目文档
+- **配置示例**：`config.example.json` 提供配置模板
+- **入口示例**：`main.py` 展示框架使用方式
+- **README**：包含安装、使用、贡献指南
+
+## 12. 许可证与开源
+- **许可证**：MIT License
+- **开源协议**：允许商业使用、修改、分发
+- **版权信息**：包含在 `LICENSE` 文件中
 
 ---
+
+## 开发工作流
+1. **环境准备**：`uv sync` 安装依赖
+2. **功能开发**：遵循契约优先、测试驱动
+3. **代码检查**：`ruff check` + `black --check`
+4. **运行测试**：`uv run pytest --cov=src`
+5. **版本更新**：`bumpver update --patch`
+6. **构建发布**：`uv build` + `uv run twine upload dist/*`
 
 如有特殊约定或变更，请在本文件补充说明。 

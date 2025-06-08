@@ -14,7 +14,7 @@ async def test_load_config():
     # Path(__file__).parent.parent = ./fastapi-keystone
     example_config_path = Path(__file__).parent.parent / "config.example.json"
     print(example_config_path)
-    config: Config = await load_config(str(example_config_path))
+    config: Config = load_config(str(example_config_path))
     assert config is not None
     assert config.server.host == "0.0.0.0"
     assert config.server.port == 8080
@@ -23,6 +23,7 @@ async def test_load_config():
 
     print(config)
 
+@pytest.mark.asyncio
 def test_config_module():
     example_config_path = Path(__file__).parent.parent / "config.example.json"
     print(example_config_path)

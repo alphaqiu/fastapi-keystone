@@ -116,7 +116,7 @@ class Config(BaseSettings):
     databases: DatabasesConfig
 
 
-async def load_config(config_path: str = _DEFAULT_CONFIG_PATH, **kwargs) -> Config:
+def load_config(config_path: str = _DEFAULT_CONFIG_PATH, **kwargs) -> Config:
     config_file_path = Path(config_path)
     if not config_file_path.exists():
         # 如果没有指定配置文件，尝试从默认 .env 文件加载

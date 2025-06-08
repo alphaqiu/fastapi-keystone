@@ -1,0 +1,12 @@
+graft src/fastapi_keystone
+graft examples
+
+include LICENSE
+include README.md
+include pyproject.toml
+
+global-exclude __pycache__ *.py[cod]
+global-exclude .ruff_cache
+global-exclude .env
+
+prune tests
