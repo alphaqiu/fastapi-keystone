@@ -56,23 +56,17 @@ dev = [
 ]
 
 [bumpver]
-current_version = "0.0.4"
+current_version = "0.0.3"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
 tag = true
 push = true
-files = [
-    "pyproject.toml",
-]
-# 让 bumpver 同步 [project] version 字段
-search = [
-    '^version = "{version}"',  # 匹配 [project] 里的 version
-    '^current_version = "{version}"'  # 匹配 [bumpver] 里的 current_version
-]
-replace = [
-    'version = "{new_version}"',
-    'current_version = "{new_version}"'
+
+[bumpver.file_patterns]
+"pyproject.toml" = [
+    '^version = "{version}"',
+    '^current_version = "{version}"'
 ]
 
 [tool.pytest.ini_options]
