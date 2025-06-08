@@ -23,8 +23,9 @@ async def test_load_config():
 
     print(config)
 
+
 @pytest.mark.asyncio
-def test_config_module():
+async def test_config_module():
     example_config_path = Path(__file__).parent.parent / "config.example.json"
     print(example_config_path)
     injector = Injector([ConfigModule(config_path=str(example_config_path))])

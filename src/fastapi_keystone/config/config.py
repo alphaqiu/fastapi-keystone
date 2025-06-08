@@ -35,6 +35,7 @@ class ServerConfig(BaseSettings):
     description: str = Field(default="FastAPI Keystone")
     version: str = Field(default="0.0.1")
 
+
 class LoggerConfig(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",

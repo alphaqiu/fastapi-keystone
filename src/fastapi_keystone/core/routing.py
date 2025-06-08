@@ -365,7 +365,7 @@ class Router:
         config: Optional[RouteConfig] = None,
     ):
         return self._create_decorator(path, "POST", dependencies, config)
-    
+
     def patch(
         self,
         path: Annotated[str, Doc("The URL path to be used for this *path operation*.")],
@@ -382,7 +382,7 @@ class Router:
         config: Optional[RouteConfig] = None,
     ):
         return self._create_decorator(path, "PATCH", dependencies, config)
-    
+
     def delete(
         self,
         path: Annotated[str, Doc("The URL path to be used for this *path operation*.")],

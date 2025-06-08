@@ -27,7 +27,7 @@ def api_exception_handler(request: Request, exc: Exception) -> JSONResponse:
 
 def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """HTTP异常处理"""
-    if isinstance(exc, HTTPException): 
+    if isinstance(exc, HTTPException):
         return JSONResponse(
             status_code=exc.status_code,
             content=APIResponse.error(exc.detail, exc.status_code).model_dump(),
@@ -37,7 +37,7 @@ def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
 
 def validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """请求验证异常处理"""
-    if isinstance(exc, RequestValidationError): 
+    if isinstance(exc, RequestValidationError):
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=APIResponse.error(

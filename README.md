@@ -45,41 +45,50 @@ pip install fastapi-keystone[dev]
 ### 1. 基础使用
 
 ```python
-from fastapi_keystone import Config, Server
-from fastapi_keystone.core.routing import Router, group
-from fastapi_keystone.core.response import APIResponse
-from typing import Optional, List
 import uvicorn
+from injector import Injector
+from fastapi_keystone.config import ConfigModule
+from fastapi_keystone.core.response import APIResponse
+from fastapi_keystone.core.routing import group, router
+from fastapi_keystone.core.server import Server
 
-# 创建路由器
-router = Router()
+@group("/api/v1")
+class IndexController:
+    @router.get("/hello")
+    async def hello_world(self) -> APIResponse[str]:
+        return APIResponse.success("Hello, FastAPI Keystone!")
 
-# 使用装饰器定义路由
-@router.get("/hello")
-async def hello_world() -> APIResponse[str]:
-    return APIResponse.success("Hello, FastAPI Keystone!")
+    @router.get("/users/{user_id}")
+    async def get_user(self, user_id: int) -> APIResponse[dict]:
+        return APIResponse.success({"id": user_id, "name": f"User {user_id}"})
 
-@router.get("/users/{user_id}")
-async def get_user(user_id: int) -> APIResponse[dict]:
-    return APIResponse.success({"id": user_id, "name": f"User {user_id}"})
-
-# 创建服务器
-config = Config()
-server = Server(config)
-
-# 注册路由
-router.register_routes(server.app)
+def main():
+    # 创建依赖注入容器
+    injector = Injector([ConfigModule("config.json")])
+    
+    # 创建服务器
+    server = injector.get(Server)
+    
+    # 设置API
+    app = server.setup_api(injector, [IndexController])
+    
+    # 启动服务器
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 if __name__ == "__main__":
-    uvicorn.run(server.app, host="0.0.0.0", port=8000)
+    main()
 ```
 
-### 2. 类级别路由定义
+### 2. 类级别路由定义与依赖注入
 
 ```python
-from fastapi_keystone.core.routing import Router, group
+import uvicorn
+from typing import List
+from injector import Injector, Module, provider, singleton, inject
+from fastapi_keystone.config import ConfigModule
 from fastapi_keystone.core.response import APIResponse
-from injector import inject
+from fastapi_keystone.core.routing import group, router
+from fastapi_keystone.core.server import Server
 
 # 定义用户服务
 class UserService:
@@ -89,8 +98,12 @@ class UserService:
     def get_users(self):
         return [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
 
-# 创建路由器
-router = Router()
+# 服务模块，用于依赖注入
+class ServiceModule(Module):
+    @provider
+    @singleton
+    def user_service(self) -> UserService:
+        return UserService()
 
 # 使用类级别路由
 @group("/api/v1/users")
@@ -114,8 +127,24 @@ class UserController:
         # 创建用户逻辑
         return APIResponse.success({"message": "User created", "data": user_data})
 
-# 注册控制器路由
-router.register_controller_routes(server.app, [UserController])
+def main():
+    # 创建依赖注入容器
+    injector = Injector([
+        ConfigModule("config.json"),
+        ServiceModule()
+    ])
+    
+    # 创建服务器
+    server = injector.get(Server)
+    
+    # 设置API
+    app = server.setup_api(injector, [UserController])
+    
+    # 启动服务器
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    main()
 ```
 
 ### 3. 配置管理
@@ -159,24 +188,46 @@ router.register_controller_routes(server.app, [UserController])
 使用配置：
 
 ```python
-from fastapi_keystone import load_config, Server
+from injector import Injector, inject
+from fastapi_keystone.config import Config, ConfigModule
+from fastapi_keystone.core.server import Server
 
-# 加载配置
-config = await load_config("config.json")
+@group("/api/v1")
+class ConfigController:
+    @inject
+    def __init__(self, config: Config):
+        self.config = config
+    
+    @router.get("/info")
+    async def get_app_info(self) -> APIResponse[dict]:
+        return APIResponse.success({
+            "title": self.config.server.title,
+            "version": self.config.server.version,
+            "db_host": self.config.databases.root["default"].host
+        })
 
-# 访问配置
-print(config.server.title)  # My FastAPI Keystone App
-print(config.databases.root["default"].host)  # localhost
-
-# 创建服务器
-server = Server(config)
+def main():
+    # 创建依赖注入容器，自动加载配置
+    injector = Injector([ConfigModule("config.json")])
+    
+    # 创建服务器
+    server = injector.get(Server)
+    
+    # 设置API
+    app = server.setup_api(injector, [ConfigController])
+    
+    return app
 ```
 
 ### 4. 依赖注入
 
 ```python
-from injector import Injector, Module, provider, singleton
-from fastapi_keystone import ConfigModule
+import uvicorn
+from injector import Injector, Module, provider, singleton, inject
+from fastapi_keystone.config import Config, ConfigModule
+from fastapi_keystone.core.response import APIResponse
+from fastapi_keystone.core.routing import group, router
+from fastapi_keystone.core.server import Server
 
 class DatabaseService:
     def __init__(self, db_config):
@@ -191,12 +242,6 @@ class ServiceModule(Module):
     def database_service(self, config: Config) -> DatabaseService:
         return DatabaseService(config.databases.root["default"])
 
-# 设置依赖注入容器
-injector = Injector([
-    ConfigModule("config.json"),
-    ServiceModule()
-])
-
 # 在控制器中使用
 @group("/api/v1/db")
 class DatabaseController:
@@ -208,6 +253,25 @@ class DatabaseController:
     async def get_db_status(self) -> APIResponse[str]:
         status = self.db_service.get_connection()
         return APIResponse.success(status)
+
+def main():
+    # 设置依赖注入容器
+    injector = Injector([
+        ConfigModule("config.json"),
+        ServiceModule()
+    ])
+    
+    # 创建服务器
+    server = injector.get(Server)
+    
+    # 设置API
+    app = server.setup_api(injector, [DatabaseController])
+    
+    # 启动服务器
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    main()
 ```
 
 ### 5. 异常处理
