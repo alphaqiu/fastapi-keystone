@@ -9,8 +9,8 @@ clean:
 	@rm -rf dist
 	@rm -rf src/fastapi_keystone.egg-info
 
-build:
-	# uv run bumpver update --no-commit --no-tag --no-push
+build: clean
+	uv run bumpver update --patch
 	uv build
 
 publish:
