@@ -54,6 +54,7 @@ dev = [
     "uvicorn>=0.34.3",
     "httpx>=0.28.1",
     "bumpver>=2024.1130",
+    "mypy>=1.16.0",
 ]
 
 [bumpver]

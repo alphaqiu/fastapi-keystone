@@ -51,7 +51,7 @@ class AppInjector:
 
 # Apply singleton decorator and store type references
 _AppInjectorType = AppInjector
-AppInjector = singleton(AppInjector)  # type: ignore[misc]
+AppInjector = singleton(AppInjector)  # type: ignore[assignment,misc]
 _app_injector: Optional[_AppInjectorType] = None
 
 

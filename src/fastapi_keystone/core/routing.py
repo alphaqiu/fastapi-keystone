@@ -463,8 +463,8 @@ class Router:
         def decorator(func: Callable) -> Callable:
             # 将路由信息附加到函数对象上，以便后续统一注册
             if not hasattr(func, "_route_info"):
-                func._route_info = {}
-            func._route_info.update(
+                setattr(func, "_route_info", {})
+            getattr(func, "_route_info", {}).update(
                 {
                     "path": path,
                     "methods": [method],
@@ -472,7 +472,9 @@ class Router:
                 }
             )
             if config:
-                func._route_info.update(config.model_dump(exclude_none=True))
+                getattr(func, "_route_info", {}).update(
+                    config.model_dump(exclude_none=True)
+                )
             return func
 
         return decorator

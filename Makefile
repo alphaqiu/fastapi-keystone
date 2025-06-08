@@ -5,6 +5,9 @@ check:
 	uv run black examples
 	uv run ruff format examples
 
+lint:
+	uv run mypy src
+
 clean:
 	@rm -rf dist
 	@rm -rf src/fastapi_keystone.egg-info
