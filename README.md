@@ -51,6 +51,7 @@ from fastapi_keystone.config import ConfigModule
 from fastapi_keystone.core.response import APIResponse
 from fastapi_keystone.core.routing import group, router
 from fastapi_keystone.core.server import Server
+from fastapi_keystone.core.di import AppInjector
 
 @group("/api/v1")
 class IndexController:
@@ -64,10 +65,10 @@ class IndexController:
 
 def main():
     # 创建依赖注入容器
-    injector = Injector([ConfigModule("config.json")])
+    injector = AppInjector([ConfigModule("config.json")])
     
     # 创建服务器
-    server = injector.get(Server)
+    server = injector.get_instance(Server)
     
     # 设置API
     app = server.setup_api(injector, [IndexController])
@@ -84,11 +85,12 @@ if __name__ == "__main__":
 ```python
 import uvicorn
 from typing import List
-from injector import Injector, Module, provider, singleton, inject
+from injector import Module, provider, singleton, inject
 from fastapi_keystone.config import ConfigModule
 from fastapi_keystone.core.response import APIResponse
 from fastapi_keystone.core.routing import group, router
 from fastapi_keystone.core.server import Server
+from fastapi_keystone.core.di import AppInjector
 
 # 定义用户服务
 class UserService:
@@ -129,13 +131,13 @@ class UserController:
 
 def main():
     # 创建依赖注入容器
-    injector = Injector([
+    injector = AppInjector([
         ConfigModule("config.json"),
         ServiceModule()
     ])
     
     # 创建服务器
-    server = injector.get(Server)
+    server = injector.get_instance(Server)
     
     # 设置API
     app = server.setup_api(injector, [UserController])
@@ -188,9 +190,10 @@ if __name__ == "__main__":
 使用配置：
 
 ```python
-from injector import Injector, inject
+from injector import inject
 from fastapi_keystone.config import Config, ConfigModule
 from fastapi_keystone.core.server import Server
+from fastapi_keystone.core.di import AppInjector
 
 @group("/api/v1")
 class ConfigController:
@@ -208,10 +211,10 @@ class ConfigController:
 
 def main():
     # 创建依赖注入容器，自动加载配置
-    injector = Injector([ConfigModule("config.json")])
+    injector = AppInjector([ConfigModule("config.json")])
     
     # 创建服务器
-    server = injector.get(Server)
+    server = injector.get_instance(Server)
     
     # 设置API
     app = server.setup_api(injector, [ConfigController])
@@ -223,11 +226,12 @@ def main():
 
 ```python
 import uvicorn
-from injector import Injector, Module, provider, singleton, inject
+from injector import Module, provider, singleton, inject
 from fastapi_keystone.config import Config, ConfigModule
 from fastapi_keystone.core.response import APIResponse
 from fastapi_keystone.core.routing import group, router
 from fastapi_keystone.core.server import Server
+from fastapi_keystone.core.di import AppInjector
 
 class DatabaseService:
     def __init__(self, db_config):
@@ -256,13 +260,13 @@ class DatabaseController:
 
 def main():
     # 设置依赖注入容器
-    injector = Injector([
+    injector = AppInjector([
         ConfigModule("config.json"),
         ServiceModule()
     ])
     
     # 创建服务器
-    server = injector.get(Server)
+    server = injector.get_instance(Server)
     
     # 设置API
     app = server.setup_api(injector, [DatabaseController])
