@@ -310,3 +310,29 @@ class TestAPIResponse:
             response = APIResponse.error(message, code)
             assert response.code == code
             assert response.message == message
+
+    def test_paginated_response(self):
+        """测试分页响应"""
+        response = APIResponse.paginated(data=[1, 2, 3], total=3, page=1, page_size=10)
+        assert response.code == status.HTTP_200_OK
+        assert response.message == "success"
+        assert response.data == [1, 2, 3]
+        assert response.model_dump() == {
+            "code": 200,
+            "message": "success",
+            "data": [1, 2, 3],
+            "total": 3,
+            "page": 1,
+            "page_size": 10,
+        }
+
+        print(response.model_dump_json())
+
+        response = APIResponse.success(data=[1, 2, 3])
+        assert response.model_dump() == {
+            "code": 200,
+            "message": "success",
+            "data": [1, 2, 3],
+        }
+
+        print(response.model_dump_json())
