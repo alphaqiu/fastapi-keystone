@@ -31,7 +31,9 @@ class ServerConfig(BaseSettings):
         description="工作进程数, 这个参数只影响在程序内部启动uvicorn时生效",
         ge=1,
     )
-
+    title: str = Field(default="FastAPI Keystone")
+    description: str = Field(default="FastAPI Keystone")
+    version: str = Field(default="0.0.1")
 
 class LoggerConfig(BaseSettings):
     model_config = SettingsConfigDict(

@@ -15,37 +15,41 @@ class APIException(Exception):
         self.code = code
 
 
-async def api_exception_handler(request: Request, exc: APIException) -> JSONResponse:
+def api_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """API异常处理"""
-    return JSONResponse(
-        status_code=exc.code,
-        content=APIResponse.error(exc.message, exc.code).model_dump(),
-    )
+    if isinstance(exc, APIException):
+        return JSONResponse(
+            status_code=exc.code,
+            content=APIResponse.error(exc.message, exc.code).model_dump(),
+        )
+    return global_exception_handler(request, exc)
 
 
-async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """HTTP异常处理"""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=APIResponse.error(exc.detail, exc.status_code).model_dump(),
-    )
+    if isinstance(exc, HTTPException): 
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=APIResponse.error(exc.detail, exc.status_code).model_dump(),
+        )
+    return global_exception_handler(request, exc)
 
 
-async def validation_exception_handler(
-    request: Request, exc: RequestValidationError
-) -> JSONResponse:
+def validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """请求验证异常处理"""
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=APIResponse.error(
-            message="Validation Error",
-            data=jsonable_encoder(exc.errors()),
-            code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        ).model_dump(),
-    )
+    if isinstance(exc, RequestValidationError): 
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=APIResponse.error(
+                message="Validation Error",
+                data=jsonable_encoder(exc.errors()),
+                code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ).model_dump(),
+        )
+    return global_exception_handler(request, exc)
 
 
-async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """全局异常处理"""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

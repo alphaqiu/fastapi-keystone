@@ -4,7 +4,10 @@
         "port": 8080,
         "reload": false,
         "workers": 1,
-        "run_mode": "dev"
+        "run_mode": "dev",
+        "title": "FastAPI Keystone",
+        "description": "FastAPI Keystone",
+        "version": "0.0.1"
     },
 
     "logger": {
