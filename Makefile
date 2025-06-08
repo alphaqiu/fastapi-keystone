@@ -10,7 +10,7 @@ clean:
 	@rm -rf src/fastapi_keystone.egg-info
 
 build: clean
-	uv run bumpver update --patch
+	@uv run bumpver update --patch
 	uv build
 
 publish:
