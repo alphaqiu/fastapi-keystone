@@ -4,7 +4,7 @@ import pytest
 from injector import Injector
 from rich import print
 
-from config import Config, ConfigModule, load_config
+from fastapi_keystone.config import Config, ConfigModule, load_config
 
 
 @pytest.mark.asyncio

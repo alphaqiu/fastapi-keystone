@@ -4,12 +4,14 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.testclient import TestClient
 from injector import Injector
 
-from core.routing import group, register_controllers, router
+from fastapi_keystone.core.routing import group, register_controllers, router
 
 app = FastAPI()
 
-def custom_dependency(request: Request) -> Literal['test']:
+
+def custom_dependency(request: Request) -> Literal["test"]:
     return "test"
+
 
 @group("/api")
 class CustomController:
@@ -19,11 +21,11 @@ class CustomController:
     @router.get("/test", dependencies=[Depends(custom_dependency)])
     def test(self):
         return {"message": "Hello, World!"}
-    
+
     @router.get("/test2")
     def test2(self):
         return {"message": "Hello, World!2"}
-    
+
 
 def test_routing():
     injector = Injector()

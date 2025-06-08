@@ -3,7 +3,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from core.response import APIResponse
+from fastapi_keystone.core.response import APIResponse
 
 
 class APIException(Exception):

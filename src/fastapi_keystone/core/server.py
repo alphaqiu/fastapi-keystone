@@ -10,15 +10,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from injector import Injector, inject
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from config.config import Config
-from core.exceptions import (
+from fastapi_keystone.config.config import Config
+from fastapi_keystone.core.exceptions import (
     APIException,
     api_exception_handler,
     global_exception_handler,
     http_exception_handler,
     validation_exception_handler,
 )
-from core.routing import register_controllers
+from fastapi_keystone.core.routing import register_controllers
 
 logger = getLogger(__name__)
 

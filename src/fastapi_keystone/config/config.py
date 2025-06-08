@@ -5,7 +5,7 @@ from typing import Dict, Optional
 from pydantic import Field, RootModel, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from common import deep_merge
+from fastapi_keystone.common import deep_merge
 
 _DEFAULT_CONFIG_PATH = "config.json"
 
