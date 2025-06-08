@@ -1,5 +1,7 @@
 from injector import Module, provider, singleton
 
+from fastapi_keystone.config.logger import setup_logger
+
 from .config import (
     Config,
     DatabaseConfig,
@@ -18,7 +20,9 @@ class ConfigModule(Module):
     @singleton
     def config(self) -> Config:
         # injector 不支持 异步provider
-        return load_config(config_path=self._config_path)
+        config = load_config(config_path=self._config_path)
+        setup_logger(config)
+        return config
 
 
 __all__ = [
