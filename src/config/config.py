@@ -72,6 +72,13 @@ class DatabaseConfig(BaseSettings):
 
 
 class DatabasesConfig(RootModel[Dict[str, DatabaseConfig]]):
+    """数据库配置，支持多个数据库，默认使用default数据库，default 数据库配置必须存在
+
+    Pydantic v1: 可以在 BaseModel 里用 __root__ 字段实现根模型。
+    Pydantic v2：必须用 pydantic.RootModel，不能在 BaseModel 里用 __root__ 字段，
+    否则会报你遇到的错误。
+    """
+
     @field_validator("root")
     @classmethod
     def must_have_default(
