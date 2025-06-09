@@ -533,6 +533,107 @@ async def protected_route():
     pass
 ```
 
+## ✨ 未来计划
+
+- [ ] 添加更多企业级特性，如审计日志、缓存、分布式锁等
+- [ ] 提供更多开箱即用的中间件，如 CORS、GZIP、JWT 认证等
+- [ ] 支持更多数据库，如 MySQL、Redis、MongoDB 等
+- [ ] 提供更多开箱即用的工具类，如分页、排序、搜索等
+- [ ] 提供更多开箱即用的组件，如数据库、缓存、队列等
+
+
+## 写在最后
+
+本项目的功能还在开发中，可能相关的API还不稳定，随时可能调整。在使用的时候注意版本号。
+另外，本项目是基于FastAPI的，所以需要熟悉FastAPI的开发者使用起来会更加得心应手。
+本项目的测试部分有部分是基于AI生成的，可能存在一些问题，请谨慎使用。
+
 ---
 
 ⭐ 如果这个项目对你有帮助，请考虑给我们一个 Star！
+
+## 配置文件格式支持
+
+FastAPI Keystone 支持以下配置文件格式：
+
+- `.json`（如 `config.example.json`）
+- `.yaml` 或 `.yml`（如 `config.example.yaml`）
+
+配置内容结构完全一致，推荐使用 YAML 或 JSON 任选其一。
+
+### YAML 配置示例
+
+```yaml
+server:
+  host: 0.0.0.0
+  port: 8080
+  reload: false
+  workers: 1
+  run_mode: dev
+  title: FastAPI Keystone
+  description: FastAPI Keystone
+  version: 0.0.1
+
+logger:
+  enable: true
+  level: info
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  file: logs/app.log
+  console: true
+
+databases:
+  default:
+    enable: true
+    host: 127.0.0.1
+    port: 5432
+    user: postgres
+    password: postgres
+    database: fastapi_keystone
+  main:
+    enable: true
+    host: 127.0.0.1
+    port: 5432
+    user: postgres
+    password: postgres
+    database: fastapi_keystone
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: null
+  database: 0
+  max_connections: 10
+  enable: true
+
+email:
+  smtp_host: smtp.gmail.com
+  smtp_port: 587
+  username: your_email@gmail.com
+  password: your_password
+  use_tls: true
+  from_address: noreply@example.com
+
+cache:
+  type: redis
+  ttl: 3600
+  prefix: fastapi_keystone:
+  enable_compression: false
+
+auth:
+  secret_key: your-secret-key-here
+  algorithm: HS256
+  access_token_expire_minutes: 30
+  refresh_token_expire_days: 7
+  enable_refresh_token: true
+```
+
+### 加载配置用法
+
+```python
+from fastapi_keystone.config import load_config
+
+# 自动根据后缀选择解析方式
+config = load_config("config.example.yaml")
+# 或
+config = load_config("config.example.json")
+```

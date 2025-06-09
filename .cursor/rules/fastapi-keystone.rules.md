@@ -28,6 +28,7 @@ fastapi-keystone/
 ├── LICENSE                      # MIT 许可证
 ├── README.md                    # 项目说明
 ├── config.example.json          # 配置示例
+├── config.example.yaml          # YAML 配置示例（内容需与 JSON 保持一致）
 └── main.py                      # 入口文件（示例）
 ```
 
@@ -41,7 +42,10 @@ fastapi-keystone/
 - **包管理器**：`uv`（虚拟环境、依赖安装、构建、发布）
 - **依赖配置**：使用 `pyproject.toml` 的 `[dependency-groups]` 分组管理
   - 生产依赖：FastAPI、Pydantic、SQLAlchemy、injector 等
-  - 开发依赖：pytest、black、ruff、bumpver、twine 等
+  - 开发依赖：pytest、black、ruff、bumpver、twine、pyyaml、isort 等
+- **配置相关依赖**：
+  - `pyyaml`：用于 YAML 配置文件解析
+- **类型检查**：如有，推荐 `mypy`
 
 **常用命令：**
 ```bash
@@ -50,19 +54,22 @@ uv run pytest             # 运行测试
 uv run pytest --cov=src   # 运行覆盖率测试
 uv build                  # 构建包
 uv run twine upload dist/* # 发布到 PyPI
+uv pip install pyyaml     # 安装 YAML 支持
 ```
 
 ## 4. 配置管理
 - **技术栈**：Pydantic v2 + pydantic-settings
-- **配置加载**：支持 JSON 文件、环境变量、.env 文件
+- **配置加载**：支持 JSON 文件、YAML 文件（.json/.yaml/.yml）、环境变量、.env 文件
 - **多租户支持**：`databases` 字段动态映射多数据库配置
 - **配置模型**：
   - `Config`：主配置类（server、logger、databases）
   - `DatabasesConfig`：继承 `RootModel[Dict[str, DatabaseConfig]]`
   - `DatabaseConfig`：单个数据库配置
   - 必须包含 `default` 数据库配置
-
-**配置优先级**：传参 > 配置文件 > 环境变量 > 默认值
+- **配置优先级**：传参 > 配置文件（json/yaml/yml）> 环境变量 > 默认值
+- **配置文件格式**：
+  - 推荐同时维护 `config.example.json` 和 `config.example.yaml`，内容保持一致
+  - 文档、示例、测试均需给出 YAML/JSON 两种格式的用法
 
 ## 5. 代码规范与质量
 - **代码风格**：遵循 PEP8、PEP484、PEP517、PEP621
@@ -89,6 +96,10 @@ uv run twine upload dist/* # 发布到 PyPI
   from fastapi_keystone.core.server import Server
   ```
 - **pytest 配置**：`pyproject.toml` 中设置 `pythonpath = ["src"]`
+- **测试规范补充**：
+  - 所有关键配置加载测试需覆盖 JSON/YAML 两种格式，确保行为一致
+  - 示例代码需演示两种格式的加载
+  - 文档需明确说明支持的配置格式，并给出 YAML 示例片段
 
 ## 7. 架构设计
 - **核心组件**：
@@ -133,9 +144,10 @@ uv run twine upload dist/* # 发布到 PyPI
 
 ## 11. 文档与示例
 - **文档目录**：`docs/` 存放项目文档
-- **配置示例**：`config.example.json` 提供配置模板
+- **配置示例**：`config.example.json`、`config.example.yaml` 提供配置模板，内容需保持一致
 - **入口示例**：`main.py` 展示框架使用方式
 - **README**：包含安装、使用、贡献指南
+- **YAML 配置片段**：文档和示例中需给出 YAML 配置片段
 
 ## 12. 许可证与开源
 - **许可证**：MIT License
@@ -151,5 +163,8 @@ uv run twine upload dist/* # 发布到 PyPI
 4. **运行测试**：`uv run pytest --cov=src`
 5. **版本更新**：`bumpver update --patch`
 6. **构建发布**：`uv build` + `uv run twine upload dist/*`
+7. **配置相关变更**：
+   - 新增/修改配置相关功能时，需同步更新 YAML/JSON 示例、文档、测试
+   - 新增依赖需在 `pyproject.toml` 和文档中注明
 
 如有特殊约定或变更，请在本文件补充说明。 

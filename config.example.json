@@ -36,5 +36,38 @@
             "password": "postgres",
             "database": "fastapi_keystone"
         }
+    },
+
+    "redis": {
+        "host": "127.0.0.1",
+        "port": 6379,
+        "password": null,
+        "database": 0,
+        "max_connections": 10,
+        "enable": true
+    },
+
+    "email": {
+        "smtp_host": "smtp.gmail.com",
+        "smtp_port": 587,
+        "username": "your_email@gmail.com",
+        "password": "your_password",
+        "use_tls": true,
+        "from_address": "noreply@example.com"
+    },
+
+    "cache": {
+        "type": "redis",
+        "ttl": 3600,
+        "prefix": "fastapi_keystone:",
+        "enable_compression": false
+    },
+
+    "auth": {
+        "secret_key": "your-secret-key-here",
+        "algorithm": "HS256",
+        "access_token_expire_minutes": 30,
+        "refresh_token_expire_days": 7,
+        "enable_refresh_token": true
     }
 }

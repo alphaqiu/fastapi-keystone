@@ -174,22 +174,19 @@ class TestValidationExceptionHandler:
 
         # 创建真实的RequestValidationError实例
         from pydantic_core import ErrorDetails
-        
+
         error_details = [
             ErrorDetails(
-                type="missing",
-                loc=("body", "email"), 
-                msg="field required",
-                input={}
+                type="missing", loc=("body", "email"), msg="field required", input={}
             ),
             ErrorDetails(
                 type="value_error",
                 loc=("body", "age"),
-                msg="ensure this value is greater than 0", 
-                input={}
-            )
+                msg="ensure this value is greater than 0",
+                input={},
+            ),
         ]
-        
+
         exc = RequestValidationError(error_details)
         response = validation_exception_handler(request, exc)
 

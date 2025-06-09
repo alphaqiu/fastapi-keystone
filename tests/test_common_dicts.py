@@ -1,7 +1,5 @@
 """测试字典工具函数"""
 
-import pytest
-
 from fastapi_keystone.common.dicts import deep_merge
 
 
@@ -122,9 +120,7 @@ class TestDeepMerge:
     def test_dict_vs_non_dict_override(self):
         """测试字典vs非字典类型冲突 - 用非字典覆盖字典"""
         base = {"config": {"debug": True, "version": "1.0"}}
-        update = {
-            "config": "simple_string"  # 用字符串覆盖字典
-        }
+        update = {"config": "simple_string"}  # 用字符串覆盖字典
         expected = {"config": "simple_string"}
 
         result = deep_merge(base, update)
