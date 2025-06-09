@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from typing import Any, AsyncGenerator, Dict
+from typing import Any, AsyncGenerator, Dict, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -44,7 +44,9 @@ def get_tenant_session_factory(tenant_id: str) -> async_sessionmaker[AsyncSessio
 
 
 @asynccontextmanager
-async def get_tx_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_tx_session(
+    tenant_id: Optional[str] = tenant_id_context.get(),
+) -> AsyncGenerator[AsyncSession, None]:
     """
     依赖注入函数，用于获取当前租户的数据库会话
 
@@ -52,10 +54,12 @@ async def get_tx_session() -> AsyncGenerator[AsyncSession, None]:
     - 正常执行完成时自动commit
     - 发生异常时自动rollback
     """
-    try:
-        tenant_id = tenant_id_context.get()
-    except LookupError:
-        raise RuntimeError("Tenant ID not found in request context.")
+    # try:
+    #     tenant_id = tenant_id_context.get()
+    # except LookupError:
+    #     raise RuntimeError("Tenant ID not found in request context.")
+    if tenant_id is None or tenant_id.strip() == "":
+        tenant_id = "default"
 
     session_factory = get_tenant_session_factory(tenant_id)
     async with session_factory() as session:
@@ -65,12 +69,12 @@ async def get_tx_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @asynccontextmanager
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_db_session(
+    tenant_id: Optional[str] = tenant_id_context.get(),
+) -> AsyncGenerator[AsyncSession, None]:
     """依赖注入函数，用于获取当前租户的数据库会话"""
-    try:
-        tenant_id = tenant_id_context.get()
-    except LookupError:
-        raise RuntimeError("Tenant ID not found in request context.")
+    if tenant_id is None or tenant_id.strip() == "":
+        tenant_id = "default"
 
     session_factory = get_tenant_session_factory(tenant_id)
     async with session_factory() as session:
