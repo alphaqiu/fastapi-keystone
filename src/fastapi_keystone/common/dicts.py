@@ -1,9 +1,12 @@
 """字典相关工具函数"""
 
+import copy
+
 
 def deep_merge(dct, merge_dct):
     """
-    Recursively merge two dictionaries.
+    Recursively merge two dictionaries, returning a new dict.
+    The original dicts are not modified.
 
     Args:
         dct (dict): The destination dictionary to merge into.
@@ -18,13 +21,14 @@ def deep_merge(dct, merge_dct):
         >>> deep_merge(a, b)
         {'a': 1, 'b': {'c': 2, 'd': 3}, 'e': 4}
     """
+    result = copy.deepcopy(dct)
     for k, v in merge_dct.items():
         if (
-            k in dct
-            and isinstance(dct[k], dict)
+            k in result
+            and isinstance(result[k], dict)
             and isinstance(v, dict)
         ):
-            deep_merge(dct[k], v)
+            result[k] = deep_merge(result[k], v)
         else:
-            dct[k] = v
-    return dct
+            result[k] = copy.deepcopy(v)
+    return result

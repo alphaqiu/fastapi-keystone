@@ -17,7 +17,7 @@ from injector import inject
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from fastapi_keystone.config.config import Config
-from fastapi_keystone.core.app import AppManager
+from fastapi_keystone.core.contracts import AppManagerProtocol
 from fastapi_keystone.core.exceptions import (
     APIException,
     api_exception_handler,
@@ -30,6 +30,12 @@ from fastapi_keystone.core.routing import register_controllers
 
 logger = getLogger(__name__)
 
+_EXCEPTION_HANDLERS = [
+    (APIException, api_exception_handler),
+    (HTTPException, http_exception_handler),
+    (RequestValidationError, validation_exception_handler),
+    (Exception, global_exception_handler),
+]
 
 class Server:
     """
@@ -38,22 +44,23 @@ class Server:
     Manages application lifecycle, middleware, and dependency injection.
 
     Attributes:
-        manager (AppManager): The application manager (DI container).
+        manager (AppManagerProtocol): The application manager (DI container).
         config (Config): The application configuration.
         _on_startup (List[Callable]): Startup callbacks.
         _on_shutdown (List[Callable]): Shutdown callbacks.
         _middlewares (List[Tuple[Type[BaseHTTPMiddleware], Any]]): Registered middlewares.
     """
+
     @inject
-    def __init__(self, manager: AppManager):
+    def __init__(self, manager: AppManagerProtocol):
         """
         Initialize the Server.
 
         Args:
-            manager (AppManager): The application manager (DI container).
+            manager (AppManagerProtocol): The application manager (DI container).
         """
         self.manager = manager
-        self.config: Config = manager.get_instance(Config)
+        self.config = manager.get_instance(Config)
         self._on_startup: List[Callable[[FastAPI, Config], Awaitable[None]]] = []
         self._on_shutdown: List[Callable[[FastAPI, Config], Awaitable[None]]] = []
         self._middlewares: List[Tuple[Type[BaseHTTPMiddleware], Any]] = []
@@ -147,9 +154,9 @@ class Server:
         self.app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
-            allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
+            allow_credentials=True,
         )
         logger.info("Setting up middlewares")
         for middleware_class, kwargs in self._middlewares:
@@ -157,12 +164,8 @@ class Server:
 
         logger.info("Setting up exception handlers")
         # 设置异常处理
-        self.app.add_exception_handler(APIException, api_exception_handler)
-        self.app.add_exception_handler(HTTPException, http_exception_handler)
-        self.app.add_exception_handler(
-            RequestValidationError, validation_exception_handler
-        )
-        self.app.add_exception_handler(Exception, global_exception_handler)
+        for exc_type, handler in _EXCEPTION_HANDLERS:
+            self.app.add_exception_handler(exc_type, handler)
 
         logger.info("Registering controllers")
         # 注册路由

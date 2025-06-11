@@ -22,6 +22,7 @@ class Base(DeclarativeBase):
     """
     Declarative base class for all ORM models.
     """
+
     pass
     # 所有数据库表模型都继承自 Base
 
@@ -30,6 +31,7 @@ class DatabaseModule(Module):
     """
     Injector module for providing Database dependency.
     """
+
     @provider
     def provide_database(self, config: Config) -> "Database":
         """
@@ -56,6 +58,7 @@ class Database:
         tenant_session_factories (Dict[str, async_sessionmaker[AsyncSession]]): Cached session factories per tenant.
         tenant_configs (Dict[str, Any]): Tenant database config mapping.
     """
+
     def __init__(self, config: Config):
         """
         Initialize the Database manager.

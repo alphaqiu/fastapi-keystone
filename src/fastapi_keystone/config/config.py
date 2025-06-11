@@ -1,3 +1,55 @@
+"""
+FastAPI-Keystone Configuration System
+====================================
+
+This module defines the core configuration structure for FastAPI-Keystone, supporting multi-environment, layered, and extensible configuration management.
+
+Key features:
+- Supports JSON, YAML, and environment variable loading
+- Multi-tenant database configuration
+- Extensible custom sections (e.g., redis, oss, third-party services)
+- All configuration is based on Pydantic v2 for type safety and validation
+- Use get_section to dynamically extract custom config sections
+
+Usage Example:
+--------------
+
+.. code-block:: python
+
+    from fastapi_keystone.config.config import load_config, Config
+    from pydantic import BaseSettings
+
+    class RedisConfig(BaseSettings):
+        host: str = "localhost"
+        port: int = 6379
+
+    config = load_config("config.yaml")
+    redis_cfg = config.get_section("redis", RedisConfig)
+    if redis_cfg:
+        print(redis_cfg.host, redis_cfg.port)
+
+Custom Extension Config:
+-----------------------
+
+You can add custom sections directly in config.json/yaml, for example:
+
+.. code-block:: yaml
+
+    server:
+      host: 0.0.0.0
+      port: 8000
+    redis:
+      host: redis.local
+      port: 6380
+    oss:
+      endpoint: oss-cn-shanghai.aliyuncs.com
+      access_key: ...
+
+Then retrieve dynamically via get_section("redis", RedisConfig).
+
+See below for detailed field explanations in each config class.
+"""
+
 import json
 from enum import Enum
 from pathlib import Path
@@ -16,6 +68,16 @@ T = TypeVar("T", bound=BaseSettings)
 
 
 class RunMode(str, Enum):
+    """
+    Enum for application run mode.
+
+    Attributes:
+        DEV: Development environment
+        TEST: Test environment
+        STG: Staging environment
+        PROD: Production environment
+    """
+
     DEV = "dev"
     TEST = "test"
     STG = "stg"
@@ -23,6 +85,23 @@ class RunMode(str, Enum):
 
 
 class ServerConfig(BaseSettings):
+    """
+    Server base configuration.
+
+    Supports loading from environment variables, JSON, or YAML files.
+
+    Attributes:
+        host (str): Listen address, default 127.0.0.1
+        port (int): Listen port, default 8080
+        reload (bool): Enable auto-reload, recommended only for development
+        run_mode (RunMode): Run mode, dev/test/stg/prod
+        workers (int): Worker process count, only effective when starting uvicorn internally
+        title (str): API documentation title
+        description (str): API documentation description
+        version (str): API version
+        tenant_enabled (bool): Enable multi-tenancy
+    """
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -30,26 +109,37 @@ class ServerConfig(BaseSettings):
         extra="allow",
     )
 
-    # 服务器配置
-    host: str = Field(default="127.0.0.1")
-    port: int = Field(default=8080)
-    reload: bool = Field(default=False)
+    host: str = Field(default="127.0.0.1", description="Listen address")
+    port: int = Field(default=8080, description="Listen port")
+    reload: bool = Field(default=False, description="Enable auto-reload, recommended only for development")
     run_mode: RunMode = Field(
         default=RunMode.DEV,
-        description="运行模式, dev, test, stg, prod, 分别对应开发, 测试, 预发布, 生产",
+        description="Run mode, dev, test, stg, prod, respectively corresponding to development, test, staging, production",
     )
     workers: int = Field(
         default=1,
-        description="工作进程数, 这个参数只影响在程序内部启动uvicorn时生效",
+        description="Worker process count, this parameter only affects when starting uvicorn internally",
         ge=1,
     )
-    title: str = Field(default="FastAPI Keystone")
-    description: str = Field(default="FastAPI Keystone")
-    version: str = Field(default="0.0.1")
-    tenant_enabled: bool = Field(default=False)
+    title: str = Field(default="FastAPI Keystone", description="API documentation title")
+    description: str = Field(default="FastAPI Keystone", description="API documentation description")
+    version: str = Field(default="0.0.1", description="API version")
+    tenant_enabled: bool = Field(default=False, description="Enable multi-tenancy")
 
 
 class LoggerConfig(BaseSettings):
+    """
+    Logger configuration.
+
+    Supports loading from environment variables, JSON, or YAML files.
+
+    Attributes:
+        level (str): Log level, default info
+        format (str): Log format string
+        file (Optional[str]): Log file path, if None, do not write to file
+        console (bool): Output to console
+    """
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -57,37 +147,52 @@ class LoggerConfig(BaseSettings):
         extra="allow",
     )
 
-    # 日志配置
-    level: str = Field(default="info")
+    level: str = Field(default="info", description="Log level")
     format: str = Field(
         default=(
             "%(asctime)s.%(msecs)03d |%(levelname)s| %(name)s.%(funcName)s"
             ":%(lineno)d |logmsg| %(message)s"
-        )
+        ),
+        description="Log format string",
     )
     file: Optional[str] = Field(
         default=None,
-        description="日志文件路径, 如果为空则不写入文件",
+        description="Log file path, if None, do not write to file",
         examples=["logs/app.log"],
     )
-    console: bool = Field(default=True)
+    console: bool = Field(default=True, description="Output to console")
 
 
 class DatabaseConfig(BaseSettings):
     """
-    数据库配置。
+    Single database configuration.
 
-    支持的数据库类型：
+    Supported database types:
 
-    - PostgreSQL: ``postgresql+asyncpg://...``，需安装 ``asyncpg``
-    - MySQL: ``mysql+aiomysql://...``，需安装 ``aiomysql``
-    - SQLite: ``sqlite+aiosqlite://...``，需安装 ``aiosqlite``
+    - PostgreSQL: ``postgresql+asyncpg://...``, requires ``asyncpg``
+    - MySQL: ``mysql+aiomysql://...``, requires ``aiomysql``
+    - SQLite: ``sqlite+aiosqlite://...``, requires ``aiosqlite``
 
-    参考文档：
+    See driver field for details.
 
-    - `SQLAlchemy 官方文档 - Database URLs <https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls>`_
-    - `SQLAlchemy 官方文档 - Asyncio Support <https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html>`_
-    - `FastAPI 官方文档 - SQL (Relational) Databases <https://fastapi.tiangolo.com/advanced/sql-databases/>`_
+    Reference:
+    - `SQLAlchemy Docs - Database URLs <https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls>`_
+    - `SQLAlchemy Docs - Asyncio Support <https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html>`_
+    - `FastAPI Docs - SQL (Relational) Databases <https://fastapi.tiangolo.com/advanced/sql-databases/>`_
+
+    Attributes:
+        enable (bool): Whether to enable this database config
+        driver (str): Database driver, supports postgresql+asyncpg, mysql+aiomysql, sqlite+aiosqlite
+        host (str): Database host
+        port (int): Database port
+        user (str): Username
+        password (str): Password
+        database (str): Database name, if using sqlite, this is the file path
+        echo (bool): Print SQL logs
+        pool_size (int): Connection pool size
+        max_overflow (int): Max overflow connections
+        pool_timeout (int): Connection timeout (seconds)
+        extra (Dict[str, Any]): Other SQLAlchemy supported parameters
     """
 
     model_config = SettingsConfigDict(
@@ -97,21 +202,31 @@ class DatabaseConfig(BaseSettings):
         extra="allow",
     )
 
-    # 数据库配置
-    enable: bool = Field(default=True)
-    driver: str = Field(default="postgresql+asyncpg")
-    host: str = Field(default="127.0.0.1")
-    port: int = Field(default=5432)
-    user: str = Field(default="postgres")
-    password: str = Field(default="postgres")
-    database: str = Field(default="fastapi_keystone")
-    echo: bool = Field(default=False)
-    pool_size: int = Field(default=20)
-    max_overflow: int = Field(default=10)
-    pool_timeout: int = Field(default=10)
-    extra: Dict[str, Any] = Field(default_factory=dict)
+    enable: bool = Field(default=True, description="Whether to enable this database config")
+    driver: str = Field(default="postgresql+asyncpg", description="Database driver")
+    host: str = Field(default="127.0.0.1", description="Database host")
+    port: int = Field(default=5432, description="Database port")
+    user: str = Field(default="postgres", description="Username")
+    password: str = Field(default="postgres", description="Password")
+    database: str = Field(
+        default="fastapi_keystone",
+        description="Database name, if using sqlite, this is the file path",
+    )
+    echo: bool = Field(default=False, description="Print SQL logs")
+    pool_size: int = Field(default=20, description="Connection pool size")
+    max_overflow: int = Field(default=10, description="Max overflow connections")
+    pool_timeout: int = Field(default=10, description="Connection timeout (seconds)")
+    extra: Dict[str, Any] = Field(
+        default_factory=dict, description="Other SQLAlchemy supported parameters"
+    )
 
     def dsn(self) -> str:
+        """
+        Generate a SQLAlchemy-compatible DSN string.
+
+        Returns:
+            str: Database connection string
+        """
         driver = self.driver.strip().lower()
         if driver == "sqlite+aiosqlite" and self.host.strip() == "file":
             return f"{self.driver}:///{self.database}"
@@ -128,11 +243,13 @@ _DATABASE_ITEM = TypeVar("_DATABASE_ITEM", bound=Dict[str, DatabaseConfig])
 
 
 class DatabasesConfig(RootModel[_DATABASE_ITEM]):
-    """数据库配置，支持多个数据库，默认使用default数据库，default 数据库配置必须存在
+    """
+    Multi-database configuration, supports multiple named databases.
 
-    Pydantic v1: 可以在 BaseModel 里用 __root__ 字段实现根模型。
-    Pydantic v2：必须用 pydantic.RootModel，不能在 BaseModel 里用 __root__ 字段，
-    否则会报你遇到的错误。
+    Must include a default database config.
+
+    Attributes:
+        root (Dict[str, DatabaseConfig]): Database config dict, key is database name
     """
 
     @field_validator("root")
@@ -156,6 +273,18 @@ class DatabasesConfig(RootModel[_DATABASE_ITEM]):
 
 
 class Config(BaseSettings):
+    """
+    FastAPI-Keystone main configuration object.
+
+    Supports standard fields (server, logger, databases) and arbitrary custom extension fields.
+
+    Attributes:
+        server (ServerConfig): Server config
+        logger (LoggerConfig): Logger config
+        databases (DatabasesConfig): Multi-database config
+        _section_cache (Dict[str, Any]): Section cache (private)
+    """
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -163,10 +292,11 @@ class Config(BaseSettings):
         extra="allow",
     )
 
-    server: ServerConfig = Field(default_factory=ServerConfig)
-    logger: LoggerConfig = Field(default_factory=LoggerConfig)
+    server: ServerConfig = Field(default_factory=ServerConfig, description="Server config")
+    logger: LoggerConfig = Field(default_factory=LoggerConfig, description="Logger config")
     databases: DatabasesConfig = Field(
-        default_factory=lambda: DatabasesConfig({"default": DatabaseConfig()})
+        default_factory=lambda: DatabasesConfig({"default": DatabaseConfig()}),
+        description="Multi-database config",
     )
 
     # 私有缓存字典，用于缓存已解析的配置段
@@ -174,20 +304,19 @@ class Config(BaseSettings):
 
     def get_section(self, key: str, model_type: Type[T]) -> Optional[T]:
         """
-        从配置的extra字段中提取指定key的配置，并解析为指定的Pydantic类型
+        Extract a custom extension config section and parse as the given Pydantic type.
 
         Args:
-            key: 配置项的键名
-            model_type: 目标Pydantic模型类型
+            key (str): Section key (e.g. 'redis', 'oss')
+            model_type (Type[T]): Target Pydantic model type
 
         Returns:
-            解析后的配置对象，如果配置项不存在则返回None
+            Optional[T]: Parsed config object, or None if not present
 
         Raises:
-            ValidationError: 当配置数据格式不正确时
+            ValidationError: If config data format is invalid
 
         Example:
-            >>> from pydantic import BaseSettings
             >>> class RedisConfig(BaseSettings):
             ...     host: str = "localhost"
             ...     port: int = 6379
@@ -231,10 +360,10 @@ class Config(BaseSettings):
 
     def clear_section_cache(self, key: Optional[str] = None) -> None:
         """
-        清除配置段缓存
+        Clear the section cache.
 
         Args:
-            key: 要清除的配置项键名，如果为None则清除所有缓存
+            key (Optional[str]): Section key to clear, if None clear all
         """
         if key is None:
             self._section_cache.clear()
@@ -250,23 +379,23 @@ class Config(BaseSettings):
 
     def has_section(self, key: str) -> bool:
         """
-        检查是否存在指定的配置段
+        Check if a custom extension config section exists.
 
         Args:
-            key: 配置项的键名
+            key (str): Section key
 
         Returns:
-            如果配置段存在则返回True，否则返回False
+            bool: True if section exists, else False
         """
         extra_data = self.model_extra
         return extra_data is not None and key in extra_data
 
     def get_section_keys(self) -> list[str]:
         """
-        获取所有可用的配置段键名
+        Get all available custom extension section keys.
 
         Returns:
-            配置段键名列表
+            list[str]: List of section keys
         """
         extra_data = self.model_extra
         if not extra_data:
@@ -278,6 +407,19 @@ class Config(BaseSettings):
 
 
 def load_config(config_path: str = _DEFAULT_CONFIG_PATH, **kwargs) -> Config:
+    """
+    Load configuration file, supports JSON, YAML, and environment variables.
+
+    Args:
+        config_path (str): Path to config file, supports .json/.yaml/.yml
+        **kwargs: Extra parameters, will override file content
+
+    Returns:
+        Config: Parsed config object
+
+    Raises:
+        ValueError: If file type is not supported
+    """
     config_file_path = Path(config_path)
     if not config_file_path.exists():
         # 如果没有指定配置文件，尝试从默认 .env 文件加载

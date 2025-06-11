@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, List, Optional, Type, TypeVar
 
 from injector import Injector, Module, ScopeDecorator
 from injector import singleton as injector_singleton
 
 from fastapi_keystone.config import Config, ConfigModule
+from fastapi_keystone.core.contracts import ServerProtocol
 from fastapi_keystone.core.db import DatabaseModule
 from fastapi_keystone.core.logger import setup_logger
-from fastapi_keystone.core.server import Server
 
 logger = getLogger(__name__)
 T = TypeVar("T")
@@ -24,6 +24,7 @@ class AppManager:
     Attributes:
         injector (Injector): The underlying Injector instance.
     """
+
     def __init__(self, config_path: str, modules: List[Module]):
         """
         Initialize the AppManager.
@@ -41,7 +42,9 @@ class AppManager:
         setup_logger(self.injector.get(Config))
         logger.info("AppManager initialized. 🚀 🚀 🚀")
 
-    def get_server(self) -> Server:
+    def get_server(self) -> ServerProtocol:
+        # 延迟导入，避免循环依赖
+        from fastapi_keystone.core.server import Server
         return self.injector.get(Server)
 
     def get_instance(self, cls: Type[T]) -> T:
@@ -75,7 +78,9 @@ class AppManager:
         """
         self.injector.binder.bind(cls, to=instance, scope=injector_singleton)
 
-    def register_provider(self, cls: Type[T], provider: Any, scope: ScopeDecorator = injector_singleton) -> None:
+    def register_provider(
+        self, cls: Type[T], provider: Any, scope: ScopeDecorator = injector_singleton
+    ) -> None:
         """
         Register a provider for the given class.
 
@@ -93,22 +98,73 @@ def create_app_manager(
     modules: Optional[List[Module]] = None,
 ) -> AppManager:
     """
-    创建应用程序管理器
+    Create an application manager for FastAPI-Keystone.
+
+    This function initializes the dependency injection container, loads configuration, and prepares the application manager for use.
 
     Args:
-        config_path: 配置文件路径
-        modules: 依赖注入模块列表
-        server_kwargs: 服务器参数
+        config_path (str): Path to the configuration file (e.g., 'config.yaml', 'config.json').
+        modules (Optional[List[Module]]): List of Injector modules for dependency injection.
 
     Returns:
-        应用程序管理器
+        AppManager: The application manager instance.
 
     Example:
-        >>> app_manager = create_app_manager(
-        ...     config_path="config.yaml",
-        ...     modules=[],
-        ...     server_kwargs={"port": 8000},
-        ... )
-        >>> app = app_manager.get_server().setup_api([])
+        # --- MVC-style API with DI: Controller -> Service -> DAO ---
+        from fastapi import APIRouter, Depends
+        from fastapi_keystone.core.app import create_app_manager
+        from injector import Module, provider, singleton, inject
+
+        # --- DAO Layer ---
+        class UserDAO:
+            def get_user(self, user_id: int) -> dict:
+                return {"id": user_id, "name": f"User{user_id}"}
+
+        # --- Service Layer ---
+        class UserService:
+            @inject
+            def __init__(self, dao: UserDAO):
+                self.dao = dao
+            def get_user_info(self, user_id: int) -> dict:
+                user = self.dao.get_user(user_id)
+                user["role"] = "admin"
+                return user
+
+        # --- Controller Layer ---
+        class UserController:
+            @inject
+            def __init__(self, service: UserService):
+                self.service = service
+                self.router = APIRouter()
+                self.router.add_api_route(
+                    "/user/{user_id}", self.get_user, methods=["GET"]
+                )
+            async def get_user(self, user_id: int):
+                return self.service.get_user_info(user_id)
+
+        # --- DI Module ---
+        class UserModule(Module):
+            @singleton
+            @provider
+            def provide_dao(self) -> UserDAO:
+                return UserDAO()
+            @singleton
+            @provider
+            def provide_service(self, dao: UserDAO) -> UserService:
+                return UserService(dao)
+            @singleton
+            @provider
+            def provide_controller(self, service: UserService) -> UserController:
+                return UserController(service)
+
+        # --- AppManager and API Setup ---
+        app_manager = create_app_manager(
+            config_path="config.yaml",
+            modules=[UserModule()],
+        )
+        user_controller = app_manager.get_instance(UserController)
+        app = app_manager.get_server().setup_api([user_controller.router])
+
+        # Now, GET /user/1 will return: {"id": 1, "name": "User1", "role": "admin"}
     """
     return AppManager(config_path, modules or [])

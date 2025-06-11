@@ -35,6 +35,7 @@ class PageQueryMixin:
 
     Requires the main class to implement get_db_session.
     """
+
     async def page_query(
         self: HasSession,
         stmt: Annotated[
@@ -44,21 +45,15 @@ class PageQueryMixin:
         *,
         total_stmt: Annotated[
             Optional[Select[Tuple[Any, ...]]],
-            Doc(
-                "The statement for total count. If None, use stmt as count query."
-            ),
+            Doc("The statement for total count. If None, use stmt as count query."),
         ] = None,
         page_request: Annotated[
             Optional[PageRequest],
-            Doc(
-                "Pagination request, including page number and page size."
-            ),
+            Doc("Pagination request, including page number and page size."),
         ] = None,
         order_by: Annotated[
             Optional[List[Any]],
-            Doc(
-                "Order by fields. If total_stmt is None, order is applied to stmt."
-            ),
+            Doc("Order by fields. If total_stmt is None, order is applied to stmt."),
         ] = None,
         use_custom_columns: Annotated[
             bool,

@@ -20,7 +20,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute
 from typing_extensions import Doc
 
-from fastapi_keystone.core.app import AppManager
+from fastapi_keystone.core.contracts import AppManagerProtocol
 
 
 class RouteConfig(BaseModel):
@@ -495,6 +495,7 @@ class Router:
         Returns:
             Callable: The decorator function.
         """
+
         def decorator(func: Callable) -> Callable:
             # 将路由信息附加到函数对象上，以便后续统一注册
             if not hasattr(func, "_route_info"):
@@ -603,13 +604,13 @@ def bind_method_to_instance(method, instance):
     return wrapper
 
 
-def register_controllers(app: FastAPI, manager: AppManager, controllers: List[Any]):
+def register_controllers(app: FastAPI, manager: AppManagerProtocol, controllers: List[Any]):
     """
     Discover and register routes from controller classes.
 
     Args:
         app (FastAPI): The FastAPI app instance.
-        manager (AppManager): The DI manager.
+        manager (AppManagerProtocol): The DI manager.
         controllers (List[Any]): List of controller classes.
     """
     for controller_class in controllers:

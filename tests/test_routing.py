@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Request
@@ -28,8 +29,10 @@ class CustomController:
 
 
 def test_routing():
-    injector = AppManager([])
-    register_controllers(app, injector, [CustomController])
+    app = FastAPI()
+    example_config_path = Path(__file__).parent.parent / "config.example.json"
+    manager = AppManager(config_path=str(example_config_path), modules=[])
+    register_controllers(app, manager, [CustomController])
     client = TestClient(app)
     response = client.get("/api/test")
     assert response.status_code == 200

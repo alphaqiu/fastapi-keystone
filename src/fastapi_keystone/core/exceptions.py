@@ -21,7 +21,7 @@ class APIException(Exception):
         self.code = code
 
 
-def api_exception_handler(request: Request, exc: APIException) -> JSONResponse:
+def api_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     FastAPI exception handler for APIException.
 
@@ -32,13 +32,16 @@ def api_exception_handler(request: Request, exc: APIException) -> JSONResponse:
     Returns:
         JSONResponse: Standardized error response.
     """
-    return JSONResponse(
-        status_code=exc.code,
-        content=APIResponse.error(message=exc.message, code=exc.code).model_dump(),
-    )
+    if isinstance(exc, APIException):
+        return JSONResponse(
+            status_code=exc.code,
+            content=APIResponse.error(exc.message, exc.code).model_dump(),
+        )
+
+    return global_exception_handler(request, exc)
 
 
-def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     FastAPI exception handler for HTTPException.
 
@@ -49,13 +52,15 @@ def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse
     Returns:
         JSONResponse: Standardized error response.
     """
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=APIResponse.error(message=exc.detail, code=exc.status_code).model_dump(),
-    )
+    if isinstance(exc, HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=APIResponse.error(exc.detail, exc.status_code).model_dump(),
+        )
+    return global_exception_handler(request, exc)
 
 
-def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+def validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     FastAPI exception handler for request validation errors.
 
@@ -66,14 +71,16 @@ def validation_exception_handler(request: Request, exc: RequestValidationError) 
     Returns:
         JSONResponse: Standardized error response with validation details.
     """
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=APIResponse.error(
-            message="Validation error",
-            code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            data=jsonable_encoder(exc.errors()),
-        ).model_dump(),
-    )
+    if isinstance(exc, RequestValidationError):
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=APIResponse.error(
+                message="Validation Error",
+                data=jsonable_encoder(exc.errors()),
+                code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ).model_dump(),
+        )
+    return global_exception_handler(request, exc)
 
 
 def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:

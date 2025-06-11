@@ -30,28 +30,26 @@ class TestServer:
         return config
 
     @pytest.fixture
-    def server(self, mock_config):
+    def mock_manager(self, mock_config):
+        manager = Mock()
+        manager.get_instance.return_value = mock_config
+        return manager
+
+    @pytest.fixture
+    def server(self, mock_manager):
         """创建服务器实例"""
-        return Server(mock_config)
+        return Server(mock_manager)
 
     # ===== 初始化测试 =====
 
-    def test_server_initialization(self, mock_config):
+    def test_server_initialization(self, mock_manager, mock_config):
         """测试服务器初始化"""
-        server = Server(mock_config)
+        server = Server(mock_manager)
 
         assert server.config == mock_config
         assert server._on_startup == []
         assert server._on_shutdown == []
         assert server._middlewares == []
-
-    def test_server_initialization_with_kwargs(self, mock_config):
-        """测试带额外参数的服务器初始化"""
-        custom_kwargs = {"debug": True, "custom_param": "value"}
-        server = Server(mock_config, **custom_kwargs)
-
-        assert server.config == mock_config
-        assert server.kwargs == custom_kwargs
 
     # ===== 生命周期回调测试 =====
 
@@ -144,14 +142,13 @@ class TestServer:
     @patch("fastapi_keystone.core.server.logger")
     def test_setup_api_basic(self, mock_logger, mock_register, server):
         """测试基本API设置"""
-        mock_injector = Mock(spec=Injector)
         controllers = [Mock(), Mock()]
 
         with patch("fastapi_keystone.core.server.FastAPI") as mock_fastapi:
             mock_app = Mock(spec=FastAPI)
             mock_fastapi.return_value = mock_app
 
-            app = server.setup_api(mock_injector, controllers)
+            app = server.setup_api(controllers)
 
             # 验证FastAPI实例化
             mock_fastapi.assert_called_once()
@@ -167,7 +164,7 @@ class TestServer:
             assert mock_app.add_exception_handler.call_count >= 4
 
             # 验证控制器注册
-            mock_register.assert_called_once_with(mock_app, mock_injector, controllers)
+            mock_register.assert_called_once_with(mock_app, server.manager, controllers)
 
             assert app == mock_app
 
@@ -177,7 +174,7 @@ class TestServer:
             mock_fastapi.return_value = mock_app
 
             server.enable_tenant_middleware()
-            server.setup_api(Mock(spec=Injector), [])
+            server.setup_api([])
 
             # 验证 TenantMiddleware 被添加且 config 参数正确
             found = False
@@ -196,14 +193,13 @@ class TestServer:
 
         server.add_middleware(CustomMiddleware, param="value")
 
-        mock_injector = Mock(spec=Injector)
         controllers = []
 
         with patch("fastapi_keystone.core.server.FastAPI") as mock_fastapi:
             mock_app = Mock(spec=FastAPI)
             mock_fastapi.return_value = mock_app
 
-            server.setup_api(mock_injector, controllers)
+            server.setup_api(controllers)
 
             # 验证自定义中间件被添加
             middleware_calls = mock_app.add_middleware.call_args_list
@@ -211,19 +207,18 @@ class TestServer:
             assert len(middleware_calls) >= 2
 
     @patch("fastapi_keystone.core.server.register_controllers")
-    def test_setup_api_with_kwargs(self, mock_register, mock_config):
+    def test_setup_api_with_kwargs(self, mock_register, mock_manager, mock_config):
         """测试带kwargs的API设置"""
         custom_kwargs = {"docs_url": "/custom-docs", "openapi_url": "/custom-openapi"}
-        server = Server(mock_config, **custom_kwargs)
+        server = Server(mock_manager)
 
-        mock_injector = Mock(spec=Injector)
         controllers = []
 
         with patch("fastapi_keystone.core.server.FastAPI") as mock_fastapi:
             mock_app = Mock(spec=FastAPI)
             mock_fastapi.return_value = mock_app
 
-            server.setup_api(mock_injector, controllers)
+            server.setup_api(controllers, **custom_kwargs)
 
             # 验证kwargs被传递给FastAPI
             call_kwargs = mock_fastapi.call_args[1]
@@ -237,40 +232,36 @@ class TestServer:
         """测试生命周期管理"""
         startup_called = []
         shutdown_called = []
-
         async def startup_func(app, config):
             startup_called.append((app, config))
-
         async def shutdown_func(app, config):
             shutdown_called.append((app, config))
-
         server.on_startup(startup_func).on_shutdown(shutdown_func)
-
-        # 模拟FastAPI实例
         mock_app = Mock(spec=FastAPI)
-
-        # 获取lifespan函数
         with patch("fastapi_keystone.core.server.FastAPI") as mock_fastapi:
             mock_fastapi.return_value = mock_app
-
-            # 调用setup_api来初始化lifespan
-            app = server.setup_api(Mock(spec=Injector), [])
-
-            # 获取传递给FastAPI的lifespan函数
+            server.setup_api([])
             lifespan_func = mock_fastapi.call_args[1]["lifespan"]
-
-            # 模拟lifespan上下文管理器
             async with lifespan_func(mock_app):
-                # 在进入时应该调用startup
                 assert len(startup_called) == 1
                 assert startup_called[0] == (mock_app, mock_config)
-
-                # 模拟应用运行期间
-                pass
-
-            # 在退出时应该调用shutdown
             assert len(shutdown_called) == 1
             assert shutdown_called[0] == (mock_app, mock_config)
+
+    @pytest.mark.asyncio
+    async def test_startup_callback_exception_handling(self, server, mock_config):
+        """测试启动回调异常处理"""
+        async def failing_startup(app, config):
+            raise ValueError("Startup failed")
+        server.on_startup(failing_startup)
+        mock_app = Mock(spec=FastAPI)
+        with patch("fastapi_keystone.core.server.FastAPI") as mock_fastapi:
+            mock_fastapi.return_value = mock_app
+            server.setup_api([])
+            lifespan_func = mock_fastapi.call_args[1]["lifespan"]
+            with pytest.raises(ValueError, match="Startup failed"):
+                async with lifespan_func(mock_app):
+                    pass
 
     # ===== run 方法测试 =====
 
@@ -330,27 +321,6 @@ class TestServer:
 
     # ===== 错误处理测试 =====
 
-    @pytest.mark.asyncio
-    async def test_startup_callback_exception_handling(self, server, mock_config):
-        """测试启动回调异常处理"""
-
-        async def failing_startup(app, config):
-            raise ValueError("Startup failed")
-
-        server.on_startup(failing_startup)
-
-        mock_app = Mock(spec=FastAPI)
-
-        with patch("fastapi_keystone.core.server.FastAPI") as mock_fastapi:
-            mock_fastapi.return_value = mock_app
-            app = server.setup_api(Mock(spec=Injector), [])
-            lifespan_func = mock_fastapi.call_args[1]["lifespan"]
-
-            # 启动回调异常应该传播
-            with pytest.raises(ValueError, match="Startup failed"):
-                async with lifespan_func(mock_app):
-                    pass
-
     # ===== 集成测试 =====
 
     # @patch("fastapi_keystone.core.routing.register_controllers")
@@ -390,8 +360,6 @@ class TestServer:
 
     def test_empty_controllers_list(self, server):
         """测试空控制器列表"""
-        mock_injector = Mock(spec=Injector)
-
         with patch(
             "fastapi_keystone.core.server.register_controllers"
         ) as mock_register:
@@ -399,19 +367,17 @@ class TestServer:
                 mock_app = Mock(spec=FastAPI)
                 mock_fastapi.return_value = mock_app
 
-                server.setup_api(mock_injector, [])
+                server.setup_api([])
 
-                mock_register.assert_called_once_with(mock_app, mock_injector, [])
+                mock_register.assert_called_once_with(mock_app, server.manager, [])
 
     def test_no_callbacks_registered(self, server):
         """测试未注册回调的情况"""
-        mock_injector = Mock(spec=Injector)
-
         with patch("fastapi_keystone.core.server.FastAPI") as mock_fastapi:
             mock_app = Mock(spec=FastAPI)
             mock_fastapi.return_value = mock_app
 
-            app = server.setup_api(mock_injector, [])
+            app = server.setup_api([])
 
             # 应该仍然可以正常设置
             assert app == mock_app
@@ -420,13 +386,11 @@ class TestServer:
 
     def test_no_middlewares_added(self, server):
         """测试未添加中间件的情况"""
-        mock_injector = Mock(spec=Injector)
-
         with patch("fastapi_keystone.core.server.FastAPI") as mock_fastapi:
             mock_app = Mock(spec=FastAPI)
             mock_fastapi.return_value = mock_app
 
-            server.setup_api(mock_injector, [])
+            server.setup_api([])
 
             # 应该至少添加CORS中间件
             assert mock_app.add_middleware.call_count >= 1
