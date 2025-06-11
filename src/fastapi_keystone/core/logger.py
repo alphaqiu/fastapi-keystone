@@ -8,10 +8,9 @@ def setup_logger(config: Config):
     if config.logger.format:
         formatter = config.logger.format
     level = config.logger.level
-    if isinstance(level, str):
-        level = getattr(logging, level.upper(), logging.INFO)
+    log_level: int = getattr(logging, level.upper()) or logging.INFO
     logging.basicConfig(
-        level=level,
+        level=log_level,
         format=formatter,
         force=True,
     )

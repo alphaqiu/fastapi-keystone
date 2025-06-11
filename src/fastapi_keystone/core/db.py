@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from logging import getLogger
 from threading import Lock
-from typing import Any, AsyncIterator, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional
 
 from injector import Module, provider, singleton
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -120,7 +120,7 @@ class Database:
     @asynccontextmanager
     async def get_tx_session(
         self, tenant_id: Optional[str] = None
-    ) -> AsyncIterator[AsyncSession]:
+    ) -> AsyncGenerator[AsyncSession, None]:
         """
         Get a transactional session for the given tenant.
 
@@ -153,7 +153,7 @@ class Database:
     @asynccontextmanager
     async def get_db_session(
         self, tenant_id: Optional[str] = None
-    ) -> AsyncIterator[AsyncSession]:
+    ) -> AsyncGenerator[AsyncSession, None]:
         """
         Get a plain session for the given tenant (no auto transaction).
 

@@ -37,6 +37,7 @@ _EXCEPTION_HANDLERS = [
     (Exception, global_exception_handler),
 ]
 
+
 class Server:
     """
     FastAPI application server wrapper.

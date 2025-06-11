@@ -1,4 +1,5 @@
 from logging import getLogger
+from typing import Any, Optional
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -18,6 +19,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
+        tenant_id: Optional[str] = None
         if not self.config.server.tenant_enabled:
             logger.debug("use without tenant mode. tenant_id is default")
             tenant_id = "default"

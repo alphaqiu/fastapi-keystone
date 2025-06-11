@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from logging import getLogger
-from typing import Any, List, Optional, Type, TypeVar
+from typing import Any, List, Optional, Type, TypeVar, Union
 
 from injector import Injector, Module, ScopeDecorator
 from injector import singleton as injector_singleton
@@ -25,7 +25,7 @@ class AppManager:
         injector (Injector): The underlying Injector instance.
     """
 
-    def __init__(self, config_path: str, modules: List[Module]):
+    def __init__(self, config_path: str, modules: List[Union[Module, Type[Module]]]):
         """
         Initialize the AppManager.
 
@@ -33,10 +33,11 @@ class AppManager:
             config_path (str): Path to the configuration file.
             modules (List[Module]): List of Injector modules to load.
         """
-        _internal_modules = [
+        _internal_modules: List[Union[Module, Type[Module]]] = [
             ConfigModule(config_path),
             DatabaseModule,
         ]
+        modules = modules or []
         self.injector = Injector(_internal_modules + modules)
         self.injector.binder.bind(AppManager, to=self, scope=injector_singleton)
         setup_logger(self.injector.get(Config))
@@ -45,6 +46,7 @@ class AppManager:
     def get_server(self) -> ServerProtocol:
         # 延迟导入，避免循环依赖
         from fastapi_keystone.core.server import Server
+
         return self.injector.get(Server)
 
     def get_instance(self, cls: Type[T]) -> T:
@@ -95,7 +97,7 @@ class AppManager:
 def create_app_manager(
     *,
     config_path: str,
-    modules: Optional[List[Module]] = None,
+    modules: Optional[List[Union[Module, Type[Module]]]] = None,
 ) -> AppManager:
     """
     Create an application manager for FastAPI-Keystone.
@@ -104,7 +106,7 @@ def create_app_manager(
 
     Args:
         config_path (str): Path to the configuration file (e.g., 'config.yaml', 'config.json').
-        modules (Optional[List[Module]]): List of Injector modules for dependency injection.
+        modules (Optional[List[Union[Module, Type[Module]]]]): List of Injector modules for dependency injection.
 
     Returns:
         AppManager: The application manager instance.

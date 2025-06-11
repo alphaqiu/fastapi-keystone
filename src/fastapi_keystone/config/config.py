@@ -111,7 +111,10 @@ class ServerConfig(BaseSettings):
 
     host: str = Field(default="127.0.0.1", description="Listen address")
     port: int = Field(default=8080, description="Listen port")
-    reload: bool = Field(default=False, description="Enable auto-reload, recommended only for development")
+    reload: bool = Field(
+        default=False,
+        description="Enable auto-reload, recommended only for development",
+    )
     run_mode: RunMode = Field(
         default=RunMode.DEV,
         description="Run mode, dev, test, stg, prod, respectively corresponding to development, test, staging, production",
@@ -121,8 +124,12 @@ class ServerConfig(BaseSettings):
         description="Worker process count, this parameter only affects when starting uvicorn internally",
         ge=1,
     )
-    title: str = Field(default="FastAPI Keystone", description="API documentation title")
-    description: str = Field(default="FastAPI Keystone", description="API documentation description")
+    title: str = Field(
+        default="FastAPI Keystone", description="API documentation title"
+    )
+    description: str = Field(
+        default="FastAPI Keystone", description="API documentation description"
+    )
     version: str = Field(default="0.0.1", description="API version")
     tenant_enabled: bool = Field(default=False, description="Enable multi-tenancy")
 
@@ -202,7 +209,9 @@ class DatabaseConfig(BaseSettings):
         extra="allow",
     )
 
-    enable: bool = Field(default=True, description="Whether to enable this database config")
+    enable: bool = Field(
+        default=True, description="Whether to enable this database config"
+    )
     driver: str = Field(default="postgresql+asyncpg", description="Database driver")
     host: str = Field(default="127.0.0.1", description="Database host")
     port: int = Field(default=5432, description="Database port")
@@ -292,8 +301,12 @@ class Config(BaseSettings):
         extra="allow",
     )
 
-    server: ServerConfig = Field(default_factory=ServerConfig, description="Server config")
-    logger: LoggerConfig = Field(default_factory=LoggerConfig, description="Logger config")
+    server: ServerConfig = Field(
+        default_factory=ServerConfig, description="Server config"
+    )
+    logger: LoggerConfig = Field(
+        default_factory=LoggerConfig, description="Logger config"
+    )
     databases: DatabasesConfig = Field(
         default_factory=lambda: DatabasesConfig({"default": DatabaseConfig()}),
         description="Multi-database config",

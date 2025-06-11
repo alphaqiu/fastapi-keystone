@@ -604,7 +604,9 @@ def bind_method_to_instance(method, instance):
     return wrapper
 
 
-def register_controllers(app: FastAPI, manager: AppManagerProtocol, controllers: List[Any]):
+def register_controllers(
+    app: FastAPI, manager: AppManagerProtocol, controllers: List[Any]
+):
     """
     Discover and register routes from controller classes.
 
