@@ -8,7 +8,7 @@ from injector import Module, provider
 from injector import singleton as injector_singleton
 
 from fastapi_keystone.common.singleton import reset_singleton
-from fastapi_keystone.core.di import AppInjector
+from fastapi_keystone.core.app import AppManager
 
 
 class DatabaseService:
@@ -75,8 +75,8 @@ def test_singleton_di():
     print("=== 测试 AppInjector 单例模式 ===")
 
     # 创建两个 AppInjector 实例
-    injector1 = AppInjector([AppModule()])
-    injector2 = AppInjector([AppModule()])
+    injector1 = AppManager([AppModule()])
+    injector2 = AppManager([AppModule()])
 
     print(f"injector1 is injector2: {injector1 is injector2}")
     print(f"injector1 id: {id(injector1)}")
@@ -106,11 +106,11 @@ def test_multiple_modules():
         pass
 
     # 重置单例以便重新测试
-    reset_singleton(AppInjector)
+    reset_singleton(AppManager)
 
     # 创建带多个模块的注入器
-    injector1 = AppInjector([AppModule(), SecondaryModule()])
-    injector2 = AppInjector([AppModule(), SecondaryModule()])
+    injector1 = AppManager([AppModule(), SecondaryModule()])
+    injector2 = AppManager([AppModule(), SecondaryModule()])
 
     print(f"多模块注入器是否单例: {injector1 is injector2}")
 
@@ -129,9 +129,9 @@ def test_injector_access():
     print("\n=== 测试底层注入器访问 ===")
 
     # 重置单例
-    reset_singleton(AppInjector)
+    reset_singleton(AppManager)
 
-    app_injector = AppInjector([AppModule()])
+    app_injector = AppManager([AppModule()])
 
     # 获取底层注入器
     raw_injector = app_injector.get_injector()

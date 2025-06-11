@@ -129,6 +129,3 @@ router.add_api_route(
 - [FastAPI 官方文档：Middleware](https://fastapi.tiangolo.com/tutorial/middleware/)
 - [APIRouter.add_api_route 源码](https://github.com/tiangolo/fastapi/blob/master/fastapi/routing.py)
 
----
-
-如需具体用法示例或更复杂的依赖/中间件设计，欢迎继续提问！

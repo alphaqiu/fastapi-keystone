@@ -18,13 +18,27 @@ logger:
 databases:
   default:
     enable: true
+    driver: postgresql+asyncpg
     host: 127.0.0.1
     port: 5432
     user: postgres
     password: postgres
     database: fastapi_keystone
+    echo: true
+    pool_size: 20
+    max_overflow: 10
+    pool_timeout: 10
+    extra:
+      isolation_level: READ COMMITTED
+      connect_args:
+        command_timeout: 10
+        server_settings:
+          application_name: fastapi_keystone
+          statement_timeout: 10000
+          lock_timeout: 5000
   main:
     enable: true
+    driver: postgresql+asyncpg
     host: 127.0.0.1
     port: 5432
     user: postgres

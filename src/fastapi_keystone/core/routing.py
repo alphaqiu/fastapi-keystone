@@ -1,3 +1,9 @@
+"""
+Routing utilities for FastAPI-Keystone.
+
+Provides decorator factories, route grouping, and controller registration helpers for FastAPI applications.
+"""
+
 import inspect
 from enum import Enum
 from functools import partial, wraps
@@ -14,11 +20,15 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute
 from typing_extensions import Doc
 
-from fastapi_keystone.core.di import AppInjector
+from fastapi_keystone.core.app import AppManager
 
 
 class RouteConfig(BaseModel):
-    """定义FastAPI覆层装饰器参数，与FastAPI的APIRoute参数一致"""
+    """
+    Route configuration for FastAPI decorator overlays.
+
+    Mirrors FastAPI's APIRoute parameters for unified route definition.
+    """
 
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
     response_model: Annotated[
@@ -331,7 +341,9 @@ class RouteConfig(BaseModel):
 
 
 class Router:
-    """一个简单的类，用于创建 get, post, put, delete 等装饰器工厂"""
+    """
+    Simple router class for creating get, post, put, delete, etc. decorator factories.
+    """
 
     def get(
         self,
@@ -348,6 +360,17 @@ class Router:
         ] = None,
         config: Optional[RouteConfig] = None,
     ):
+        """
+        Create a GET route decorator.
+
+        Args:
+            path (str): The URL path for the route.
+            dependencies (Optional[Sequence[params.Depends]]): Dependencies for the route.
+            config (Optional[RouteConfig]): Additional route config.
+
+        Returns:
+            Callable: The decorator function.
+        """
         return self._create_decorator(path, "GET", dependencies, config)
 
     def post(
@@ -460,6 +483,18 @@ class Router:
         ] = None,
         config: Optional[RouteConfig] = None,
     ) -> Callable:
+        """
+        Internal helper to create a route decorator.
+
+        Args:
+            path (str): The URL path.
+            method (str): HTTP method.
+            dependencies (Optional[Sequence[params.Depends]]): Dependencies.
+            config (Optional[RouteConfig]): Route config.
+
+        Returns:
+            Callable: The decorator function.
+        """
         def decorator(func: Callable) -> Callable:
             # 将路由信息附加到函数对象上，以便后续统一注册
             if not hasattr(func, "_route_info"):
@@ -496,7 +531,14 @@ def group(
     ] = None,
 ):
     """
-    类装饰器，用于定义路由组的公共前缀和中间件
+    Class decorator for defining route group prefix and dependencies.
+
+    Args:
+        prefix (str): Route group prefix.
+        dependencies (Optional[Sequence[params.Depends]]): Group dependencies.
+
+    Returns:
+        Callable: The class decorator.
     """
 
     def decorator(cls):
@@ -514,7 +556,13 @@ def RoutingMiddlewareWrapper(
     middleware: Optional[List[Middleware]] = None,
 ) -> Type[APIRoute]:
     """
-    包装器，用于将中间件应用到FastAPI路由
+    Wrapper to apply middleware to FastAPI routes.
+
+    Args:
+        middleware (Optional[List[Middleware]]): List of middleware tuples.
+
+    Returns:
+        Type[APIRoute]: Custom APIRoute class with middleware applied.
     """
 
     class WithMiddlewareAPIRoute(APIRoute):
@@ -529,6 +577,16 @@ def RoutingMiddlewareWrapper(
 
 
 def bind_method_to_instance(method, instance):
+    """
+    Bind a method to an instance, removing 'self' from the signature for FastAPI.
+
+    Args:
+        method (Callable): The method to bind.
+        instance (Any): The instance to bind to.
+
+    Returns:
+        Callable: The bound method.
+    """
     sig = inspect.signature(method)
     params = list(sig.parameters.values())
     # 移除第一个参数（self）
@@ -545,13 +603,18 @@ def bind_method_to_instance(method, instance):
     return wrapper
 
 
-def register_controllers(app: FastAPI, injector: AppInjector, controllers: List[Any]):
+def register_controllers(app: FastAPI, manager: AppManager, controllers: List[Any]):
     """
-    遍历所有控制器类，发现并注册路由
+    Discover and register routes from controller classes.
+
+    Args:
+        app (FastAPI): The FastAPI app instance.
+        manager (AppManager): The DI manager.
+        controllers (List[Any]): List of controller classes.
     """
     for controller_class in controllers:
         # 使用 DI 容器实例化控制器
-        controller_instance = injector.get_instance(controller_class)
+        controller_instance = manager.get_instance(controller_class)
 
         group_info: Dict[str, Any] = getattr(controller_class, "_group_info", {})
         group_prefix: str = group_info.get("prefix", "") or ""

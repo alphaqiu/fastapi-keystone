@@ -46,6 +46,7 @@ class ServerConfig(BaseSettings):
     title: str = Field(default="FastAPI Keystone")
     description: str = Field(default="FastAPI Keystone")
     version: str = Field(default="0.0.1")
+    tenant_enabled: bool = Field(default=False)
 
 
 class LoggerConfig(BaseSettings):
@@ -73,6 +74,22 @@ class LoggerConfig(BaseSettings):
 
 
 class DatabaseConfig(BaseSettings):
+    """
+    数据库配置。
+
+    支持的数据库类型：
+
+    - PostgreSQL: ``postgresql+asyncpg://...``，需安装 ``asyncpg``
+    - MySQL: ``mysql+aiomysql://...``，需安装 ``aiomysql``
+    - SQLite: ``sqlite+aiosqlite://...``，需安装 ``aiosqlite``
+
+    参考文档：
+
+    - `SQLAlchemy 官方文档 - Database URLs <https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls>`_
+    - `SQLAlchemy 官方文档 - Asyncio Support <https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html>`_
+    - `FastAPI 官方文档 - SQL (Relational) Databases <https://fastapi.tiangolo.com/advanced/sql-databases/>`_
+    """
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -82,11 +99,29 @@ class DatabaseConfig(BaseSettings):
 
     # 数据库配置
     enable: bool = Field(default=True)
+    driver: str = Field(default="postgresql+asyncpg")
     host: str = Field(default="127.0.0.1")
     port: int = Field(default=5432)
     user: str = Field(default="postgres")
     password: str = Field(default="postgres")
     database: str = Field(default="fastapi_keystone")
+    echo: bool = Field(default=False)
+    pool_size: int = Field(default=20)
+    max_overflow: int = Field(default=10)
+    pool_timeout: int = Field(default=10)
+    extra: Dict[str, Any] = Field(default_factory=dict)
+
+    def dsn(self) -> str:
+        driver = self.driver.strip().lower()
+        if driver == "sqlite+aiosqlite" and self.host.strip() == "file":
+            return f"{self.driver}:///{self.database}"
+        elif driver == "sqlite+aiosqlite" and self.host.strip() == "memory":
+            return f"{self.driver}:///:memory:"
+
+        return (
+            f"{driver}://{self.user}:{self.password}@{self.host}:"
+            f"{self.port}/{self.database}"
+        )
 
 
 _DATABASE_ITEM = TypeVar("_DATABASE_ITEM", bound=Dict[str, DatabaseConfig])

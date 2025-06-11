@@ -84,6 +84,7 @@ uv pip install pyyaml     # 安装 YAML 支持
   - 公共函数、类需添加 docstring
   - 复杂逻辑需有单行注释
   - 使用类型提示（Type Hints）
+  - **注释风格**：本项目统一采用 Google 风格 docstring 进行注释，所有公共函数、类、方法的文档字符串需遵循 Google 风格（详见 https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings）。
 
 ## 6. 测试策略
 - **测试框架**：pytest + pytest-asyncio + pytest-cov

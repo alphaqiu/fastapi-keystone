@@ -1,11 +1,13 @@
 """测试服务器核心模块"""
 
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import FastAPI
 from injector import Injector
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp
 
 from fastapi_keystone.core.server import Server
 
@@ -112,16 +114,16 @@ class TestServer:
         """测试添加中间件"""
 
         class TestMiddleware(BaseHTTPMiddleware):
-            pass
+            def __init__(self, app: ASGIApp, **kwargs: Any):
+                super().__init__(app, **kwargs)
 
-        args = ("arg1", "arg2")
         kwargs = {"param1": "value1"}
 
-        result = server.add_middleware(TestMiddleware, *args, **kwargs)
+        result = server.add_middleware(TestMiddleware, **kwargs)
 
         assert result == server  # 支持链式调用
         assert len(server._middlewares) == 1
-        assert server._middlewares[0] == (TestMiddleware, args, kwargs)
+        assert server._middlewares[0] == (TestMiddleware, kwargs)
 
     def test_add_multiple_middlewares(self, server):
         """测试添加多个中间件"""
@@ -169,6 +171,22 @@ class TestServer:
 
             assert app == mock_app
 
+    def test_enable_tenant_middleware(self, server):
+        with patch("fastapi_keystone.core.server.FastAPI") as mock_fastapi:
+            mock_app = Mock(spec=FastAPI)
+            mock_fastapi.return_value = mock_app
+
+            server.enable_tenant_middleware()
+            server.setup_api(Mock(spec=Injector), [])
+
+            # 验证 TenantMiddleware 被添加且 config 参数正确
+            found = False
+            for call in mock_app.add_middleware.call_args_list:
+                if call[0][0].__name__ == "TenantMiddleware":
+                    assert "config" in call[1]
+                    found = True
+            assert found
+
     @patch("fastapi_keystone.core.server.register_controllers")
     def test_setup_api_with_custom_middlewares(self, mock_register, server):
         """测试带自定义中间件的API设置"""
@@ -176,7 +194,7 @@ class TestServer:
         class CustomMiddleware(BaseHTTPMiddleware):
             pass
 
-        server.add_middleware(CustomMiddleware, "arg1", param="value")
+        server.add_middleware(CustomMiddleware, param="value")
 
         mock_injector = Mock(spec=Injector)
         controllers = []

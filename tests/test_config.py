@@ -7,6 +7,7 @@ from typing import Any, Dict
 import pytest
 from injector import Injector
 from pydantic import ValidationError
+from pydantic_settings import BaseSettings
 from rich import print
 
 from fastapi_keystone.config import Config, ConfigModule, load_config
@@ -584,3 +585,58 @@ def test_deep_merge_functionality(temp_config_file):
 
     finally:
         os.unlink(config_path)
+
+
+def test_database_config_driver_and_dsn():
+    from fastapi_keystone.config import DatabaseConfig
+
+    # PostgreSQL
+    cfg = DatabaseConfig(driver="postgresql+asyncpg", host="localhost", port=5432, user="u", password="p", database="d")
+    assert cfg.dsn().startswith("postgresql+asyncpg://u:p@localhost:5432/d")
+    # MySQL
+    cfg = DatabaseConfig(driver="mysql+aiomysql", host="127.0.0.1", port=3306, user="u", password="p", database="d")
+    assert cfg.dsn().startswith("mysql+aiomysql://u:p@127.0.0.1:3306/d")
+    # SQLite file
+    cfg = DatabaseConfig(driver="sqlite+aiosqlite", host="file", database="/tmp/test.db")
+    assert cfg.dsn() == "sqlite+aiosqlite:////tmp/test.db"
+    # SQLite memory
+    cfg = DatabaseConfig(driver="sqlite+aiosqlite", host="memory", database="irrelevant")
+    assert cfg.dsn() == "sqlite+aiosqlite:///:memory:"
+
+
+def test_database_config_extra_field():
+    from fastapi_keystone.config import DatabaseConfig
+    cfg = DatabaseConfig(extra={"foo": "bar"})
+    assert cfg.extra["foo"] == "bar"
+
+
+class RedisConfig(BaseSettings):
+    host: str
+    port: int
+
+
+def test_config_get_section_and_keys():
+    from fastapi_keystone.config import Config
+
+    # 构造带自定义section的Config
+    config = Config.model_validate({
+        "server": {},
+        "logger": {},
+        "databases": {"default": {}},
+        "redis": {"host": "localhost", "port": 6379},
+        "custom": {"foo": 1},
+    })
+    # get_section_keys
+    keys = config.get_section_keys()
+    assert "redis" in keys and "custom" in keys
+    # has_section
+    assert config.has_section("redis")
+    # get_section
+    redis_cfg = config.get_section("redis", RedisConfig)
+    assert redis_cfg is not None and redis_cfg.host == "localhost"
+    # 缓存命中
+    redis_cfg2 = config.get_section("redis", RedisConfig)
+    assert redis_cfg2 is redis_cfg
+    # 清除缓存
+    config.clear_section_cache("redis")
+    assert config.get_section("redis", RedisConfig) is not None

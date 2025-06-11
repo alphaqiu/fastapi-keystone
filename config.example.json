@@ -7,9 +7,9 @@
         "run_mode": "dev",
         "title": "FastAPI Keystone",
         "description": "FastAPI Keystone",
-        "version": "0.0.1"
+        "version": "0.0.1",
+        "tenant_enabled": true
     },
-
     "logger": {
         "enable": true,
         "level": "info",
@@ -17,27 +17,42 @@
         "file": "logs/app.log",
         "console": true
     },
-
     "databases": {
         "default": {
             "enable": true,
+            "driver": "postgresql+asyncpg",
             "host": "127.0.0.1",
             "port": 5432,
             "user": "postgres",
             "password": "postgres",
-            "database": "fastapi_keystone"
+            "database": "fastapi_keystone",
+            "echo": true,
+            "pool_size": 20,
+            "max_overflow": 10,
+            "pool_timeout": 10,
+            "extra": {
+                "isolation_level": "READ COMMITTED",
+                "connect_args": {
+                    "command_timeout": 10,
+                    "server_settings": {
+                        "application_name": "crm",
+                        "statement_timeout": "10000",
+                        "lock_timeout": "5000"
+                    }
+                }
+            }
         },
-
         "main": {
             "enable": true,
+            "driver": "postgresql+asyncpg",
             "host": "127.0.0.1",
             "port": 5432,
             "user": "postgres",
             "password": "postgres",
-            "database": "fastapi_keystone"
+            "database": "fastapi_keystone",
+            "echo": true
         }
     },
-
     "redis": {
         "host": "127.0.0.1",
         "port": 6379,
@@ -46,7 +61,6 @@
         "max_connections": 10,
         "enable": true
     },
-
     "email": {
         "smtp_host": "smtp.gmail.com",
         "smtp_port": 587,
@@ -55,14 +69,12 @@
         "use_tls": true,
         "from_address": "noreply@example.com"
     },
-
     "cache": {
         "type": "redis",
         "ttl": 3600,
         "prefix": "fastapi_keystone:",
         "enable_compression": false
     },
-
     "auth": {
         "secret_key": "your-secret-key-here",
         "algorithm": "HS256",

@@ -313,7 +313,7 @@ class TestAPIResponse:
 
     def test_paginated_response(self):
         """测试分页响应"""
-        response = APIResponse.paginated(data=[1, 2, 3], total=3, page=1, page_size=10)
+        response = APIResponse.paginated(data=[1, 2, 3], total=3, page=1, size=10)
         assert response.code == status.HTTP_200_OK
         assert response.message == "success"
         assert response.data == [1, 2, 3]
@@ -323,7 +323,7 @@ class TestAPIResponse:
             "data": [1, 2, 3],
             "total": 3,
             "page": 1,
-            "page_size": 10,
+            "size": 10,
         }
 
         print(response.model_dump_json())
