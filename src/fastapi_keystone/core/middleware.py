@@ -12,13 +12,17 @@ from fastapi_keystone.core.db import tenant_id_context
 
 logger = getLogger(__name__)
 
+
 class Demo(BaseHTTPMiddleware):
     def __init__(self, app: ASGIApp, config: Config):
         super().__init__(app)
         self.config = config
-    
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
         return await call_next(request)
+
 
 class TenantMiddleware:
     def __init__(self, app: ASGIApp, config: Config):

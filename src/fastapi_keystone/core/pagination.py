@@ -1,4 +1,3 @@
-
 from logging import getLogger
 from typing import (
     Annotated,
@@ -89,7 +88,7 @@ class PageQueryMixin:
         if offset is None or offset < 0:
             offset = 0
 
-        async with self.get_db_session(tenant_id) as session: # type: ignore
+        async with self.get_db_session(tenant_id) as session:  # type: ignore
             # 获取总记录数
             query_stmt = stmt
             if total_stmt is not None:
