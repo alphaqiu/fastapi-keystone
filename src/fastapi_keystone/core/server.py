@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from logging import getLogger
-from typing import Any, Awaitable, Callable, List, Optional, Tuple, Type
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from injector import inject
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware import _MiddlewareFactory
 
 from fastapi_keystone.config.config import Config
 from fastapi_keystone.core.contracts import AppManagerProtocol
@@ -25,7 +25,7 @@ from fastapi_keystone.core.exceptions import (
     http_exception_handler,
     validation_exception_handler,
 )
-from fastapi_keystone.core.middleware import TenantMiddleware
+from fastapi_keystone.core.middleware import Demo, TenantMiddleware
 from fastapi_keystone.core.routing import register_controllers
 
 logger = getLogger(__name__)
@@ -64,7 +64,7 @@ class Server:
         self.config = manager.get_instance(Config)
         self._on_startup: List[Callable[[FastAPI, Config], Awaitable[None]]] = []
         self._on_shutdown: List[Callable[[FastAPI, Config], Awaitable[None]]] = []
-        self._middlewares: List[Tuple[Type[BaseHTTPMiddleware], Any]] = []
+        self._middlewares: List[Tuple[_MiddlewareFactory, Dict[str, Any]]] = []
 
     @asynccontextmanager
     async def _lifespan(self, app: FastAPI):
@@ -122,10 +122,11 @@ class Server:
             Server: The server instance (for chaining).
         """
         self._middlewares.append((TenantMiddleware, {"config": self.config}))
+        self._middlewares.append((Demo, {"config": self.config}))
         return self
 
     def add_middleware(
-        self, middleware_class: Type[BaseHTTPMiddleware], **kwargs: Any
+        self, middleware_class: _MiddlewareFactory, **kwargs: Any
     ) -> "Server":
         """
         Add a custom middleware to the application.
