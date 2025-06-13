@@ -20,7 +20,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute
 from typing_extensions import Doc
 
-from fastapi_keystone.core.contracts import AppManagerProtocol
+from fastapi_keystone.core import AppManagerProtocol
 
 
 class RouteConfig(BaseModel):

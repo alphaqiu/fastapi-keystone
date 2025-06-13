@@ -20,7 +20,7 @@ from starlette.middleware import _MiddlewareFactory
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 from fastapi_keystone.config.config import Config
-from fastapi_keystone.core.contracts import AppManagerProtocol
+from fastapi_keystone.core import AppManagerProtocol
 from fastapi_keystone.core.exceptions import (
     APIException,
     api_exception_handler,
