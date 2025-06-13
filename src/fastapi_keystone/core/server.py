@@ -250,7 +250,7 @@ class Server:
 
         if hasattr(self, "tenant_middleware"):
             logger.info("Setting up tenant middleware")
-            self.app.add_middleware(self.tenant_middleware, config=self.config)        
+            self.app.add_middleware(self.tenant_middleware, config=self.config)
 
         self.app.add_middleware(ExceptionMiddleware)
 

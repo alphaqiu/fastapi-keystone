@@ -1,7 +1,17 @@
 from __future__ import annotations
 
 from logging import Logger
-from typing import Any, Awaitable, Callable, List, Optional, Protocol, Type, TypeVar
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    List,
+    Optional,
+    Protocol,
+    Type,
+    TypeVar,
+    runtime_checkable,
+)
 
 from fastapi import FastAPI
 from injector import ScopeDecorator
@@ -10,6 +20,7 @@ from starlette.middleware import _MiddlewareFactory
 T = TypeVar("T")
 
 
+@runtime_checkable
 class AppManagerProtocol(Protocol):
     """
     Protocol for the application manager contract.
@@ -42,6 +53,7 @@ class AppManagerProtocol(Protocol):
     ) -> None: ...
 
 
+@runtime_checkable
 class ServerProtocol(Protocol):
     """
     Protocol for the server contract.

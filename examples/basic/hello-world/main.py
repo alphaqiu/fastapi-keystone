@@ -1,71 +1,84 @@
-"""
-FastAPI Keystone Hello World 示例
+from typing import Optional
 
-这是最简单的 FastAPI Keystone 应用，展示：
-1. 基础路由定义
-2. 标准化API响应
-3. 最小配置启动
-"""
+from fastapi import Depends, FastAPI, Query, Request, Response
 
-from fastapi import Query
-from injector import Injector
-
-from fastapi_keystone.config import ConfigModule
-from fastapi_keystone.core.app import AppManager, get_app_injector
-from fastapi_keystone.core.response import APIResponse
+from fastapi_keystone.config import Config
+from fastapi_keystone.core import AppManager
 from fastapi_keystone.core.routing import group, router
-from fastapi_keystone.core.server import Server
+
+
+async def do_init_on_startup(app: FastAPI, config: Config):
+    print("Starting server, init on startup callbacks")
+
+
+async def do_init_on_shutdown(app: FastAPI, config: Config):
+    print("Stopping server, init on shutdown callbacks")
+
+
+async def custom_middleware(request: Request) -> Optional[str]:
+    print(f"Request: {request}")
+    custom_header = request.headers.get("X-Custom-Header")
+    if custom_header:
+        print(f"Custom header: {custom_header}")
+    else:
+        print("No custom header")
+    return custom_header
 
 
 @group("/api/v1")
-class IndexController:
-    @router.get("/")
-    async def root(self) -> APIResponse[dict]:
-        return APIResponse.success(
-            {
-                "message": "欢迎使用 FastAPI Keystone!",
-                "framework": "FastAPI Keystone",
-                "version": "0.0.2",
-            }
+class DemoController:
+    def __init__(self):
+        pass
+
+    @router.get("/hello", dependencies=[Depends(custom_middleware)])
+    def get_hello(
+        self,
+        name: str = Query(default="World", title="姓名", description="姓名"),
+    ):
+        return {"message": f"Hello from fastapi-keystone-demo! {name}"}
+
+    @router.get("/hello2")
+    def get_hello2(
+        self,
+        name: str = Query(default="World", title="姓名", description="姓名"),
+    ):
+        return {"message": f"Hello from fastapi-keystone-demo! {name}"}
+
+
+# 添加一个独立的控制器处理静态文件请求
+class StaticController:
+    def __init__(self):
+        pass
+
+    @router.get("/sw.js")
+    def service_worker(self):
+        """处理 Service Worker 请求，返回空的 JS 内容"""
+        return Response(
+            content="// Empty service worker",
+            media_type="application/javascript",
+            status_code=200,
         )
 
-    @router.get("/hello/{name}")
-    async def hello(self, name: str = Query(..., description="用户姓名")) -> APIResponse[dict]:
-        return APIResponse.success(
-            {"message": f"Hello, {name}!", "timestamp": "2024-01-01T00:00:00Z"}
-        )
-
-    @router.get("/health")
-    async def health_check(self) -> APIResponse[dict]:
-        return APIResponse.success({"status": "healthy", "service": "fastapi-keystone-hello-world"})
+    @router.get("/favicon.ico")
+    def favicon(self):
+        """处理 favicon 请求，避免 404"""
+        return Response(status_code=204)
 
 
-def main():
-    """应用主入口"""
-    # 创建配置（使用默认配置）
-    injector = AppManager(config_path="config.json", modules=[ConfigModule("config.json")])
-    # 创建服务器
-    server = injector.get_instance(Server)
-
-    async def on_startup(app, config):
-        print("🚀 启动 FastAPI Keystone Hello World 应用...")
-
-    async def on_shutdown(app, config):
-        print("🛑 停止 FastAPI Keystone Hello World 应用...")
-
+def main(stand_alone: bool = False) -> Optional[FastAPI]:
+    manager = AppManager(config_path="config.json", modules=[])
+    server = manager.get_server()
     app = (
-        server.on_startup(on_startup)
-        .on_shutdown(on_shutdown)
-        .enable_tenant_middleware()
-        .setup_api([IndexController])
+        server.on_startup(do_init_on_startup)
+        .on_shutdown(do_init_on_shutdown)
+        .setup_api(controllers=[DemoController, StaticController])
     )
-
-    # 启动服务器
-    print("🚀 启动 FastAPI Keystone Hello World 应用...")
-    print("📖 API 文档: http://localhost:8000/docs")
-    print("🔍 交互式文档: http://localhost:8000/redoc")
-    server.run(app)
+    if stand_alone:
+        server.run(app)
+    return app
 
 
 if __name__ == "__main__":
-    main()
+    main(True)
+else:
+    app = main(False)
