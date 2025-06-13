@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from contextvars import ContextVar
 from logging import getLogger
 from threading import Lock
 from typing import Any, AsyncGenerator, Dict, Optional
@@ -11,11 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase
 
 from fastapi_keystone.config import Config
+from fastapi_keystone.core.middlewares import request_context
 
 logger = getLogger(__name__)
-
-# 使用 ContextVar 来存储当前请求的租户ID，确保在异步环境中上下文安全
-tenant_id_context: ContextVar[str] = ContextVar("tenant_id_context")
 
 
 class Base(DeclarativeBase):
@@ -132,9 +129,12 @@ class Database:
         """
         if tenant_id is None:
             try:
-                tenant_id = tenant_id_context.get()
+                tenant_id = request_context.get().get("tenant_id", None)
             except LookupError:
                 raise RuntimeError("Tenant ID not found in request context.")
+
+        if tenant_id is None:
+            raise RuntimeError("Tenant ID not found in request context.")
 
         session_factory = self.get_tenant_session_factory(tenant_id)
         async with session_factory() as session:
@@ -165,9 +165,12 @@ class Database:
         """
         if tenant_id is None:
             try:
-                tenant_id = tenant_id_context.get()
+                tenant_id = request_context.get().get("tenant_id", None)
             except LookupError:
                 raise RuntimeError("Tenant ID not found in request context.")
+
+        if tenant_id is None:
+            raise RuntimeError("Tenant ID not found in request context.")
 
         session_factory = self.get_tenant_session_factory(tenant_id)
         async with session_factory() as session:

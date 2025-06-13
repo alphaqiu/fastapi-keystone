@@ -12,7 +12,25 @@ T = TypeVar("T")
 
 class AppManagerProtocol(Protocol):
     """
-    Protocol for AppManager contract.
+    Protocol for the application manager contract.
+
+    This protocol defines the contract for managing application-wide services,
+    dependency injection, and server instance access. It is intended to be
+    implemented by classes that coordinate the FastAPI application's lifecycle
+    and dependency management.
+
+    Methods:
+        get_server(): Return the server protocol instance.
+        get_instance(cls): Retrieve an instance of the given class from the injector.
+        get_injector(): Return the underlying injector instance.
+        register_singleton(cls, instance): Register a singleton instance for a class.
+        register_provider(cls, provider, scope): Register a provider for a class with a given scope.
+
+    Example:
+        class MyAppManager(AppManagerProtocol):
+            ...
+        app_manager = MyAppManager()
+        server = app_manager.get_server()
     """
 
     def get_server(self) -> "ServerProtocol": ...
@@ -26,7 +44,33 @@ class AppManagerProtocol(Protocol):
 
 class ServerProtocol(Protocol):
     """
-    Protocol for Server contract.
+    Protocol for the server contract.
+
+    This protocol defines the contract for configuring and running the FastAPI server,
+    including middleware, CORS, multi-tenancy, startup/shutdown hooks, and API setup.
+    It is intended to be implemented by classes that encapsulate server configuration
+    and lifecycle management.
+
+    Methods:
+        on_startup(func): Register a startup event handler.
+        on_shutdown(func): Register a shutdown event handler.
+        enable_tenant(): Enable multi-tenant support.
+        enable_trusted_host(trusted_hosts, www_redirect): Enable trusted host validation.
+        enable_simple_trace(logger): Enable simple request tracing middleware.
+        enable_etag(): Enable ETag middleware.
+        enable_hsts(): Enable HSTS middleware.
+        force_https(): Force HTTPS redirection.
+        enable_cors(...): Enable and configure CORS middleware.
+        add_middleware(middleware_class, **kwargs): Add custom middleware.
+        setup_api(controllers, **kwargs): Register API controllers and setup routes.
+        run(app): Run the FastAPI application.
+
+    Example:
+        class MyServer(ServerProtocol):
+            ...
+        server = MyServer()
+        server.enable_cors(allow_origins=["*"])
+        server.run(app)
     """
 
     def on_startup(
@@ -40,6 +84,8 @@ class ServerProtocol(Protocol):
         self, trusted_hosts: List[str], www_redirect: bool = True
     ) -> "ServerProtocol": ...
     def enable_simple_trace(self, logger: Optional[Logger] = None) -> "ServerProtocol": ...
+    def enable_etag(self) -> "ServerProtocol": ...
+    def enable_hsts(self) -> "ServerProtocol": ...
     def force_https(self) -> "ServerProtocol": ...
     def enable_cors(
         self,

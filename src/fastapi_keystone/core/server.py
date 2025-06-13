@@ -28,8 +28,10 @@ from fastapi_keystone.core.exceptions import (
     http_exception_handler,
     validation_exception_handler,
 )
-from fastapi_keystone.core.middleware import (
+from fastapi_keystone.core.middlewares import (
+    EtagMiddleware,
     ExceptionMiddleware,
+    HSTSMiddleware,
     SimpleTraceMiddleware,
     TenantMiddleware,
 )
@@ -152,6 +154,20 @@ class Server:
         self.tenant_middleware = TenantMiddleware
         return self
 
+    def enable_etag(self) -> "Server":
+        """
+        Enable ETag for all requests.
+        """
+        self.etag_middleware = EtagMiddleware
+        return self
+
+    def enable_hsts(self) -> "Server":
+        """
+        Enable HSTS for all requests.
+        """
+        self.hsts_middleware = HSTSMiddleware
+        return self
+
     def force_https(self) -> "Server":
         """
         Force HTTPS for all requests.
@@ -234,9 +250,17 @@ class Server:
 
         if hasattr(self, "tenant_middleware"):
             logger.info("Setting up tenant middleware")
-            self.app.add_middleware(self.tenant_middleware, config=self.config)
+            self.app.add_middleware(self.tenant_middleware, config=self.config)        
 
         self.app.add_middleware(ExceptionMiddleware)
+
+        if hasattr(self, "etag_middleware"):
+            logger.info("Setting up etag middleware")
+            self.app.add_middleware(self.etag_middleware)
+
+        if hasattr(self, "hsts_middleware"):
+            logger.info("Setting up HSTS middleware")
+            self.app.add_middleware(self.hsts_middleware)
 
         # 设置中间件
         if hasattr(self, "cors_middleware"):

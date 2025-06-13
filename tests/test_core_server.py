@@ -5,7 +5,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 from fastapi import FastAPI
-from injector import Injector
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
@@ -173,7 +172,7 @@ class TestServer:
             mock_app = Mock(spec=FastAPI)
             mock_fastapi.return_value = mock_app
 
-            server.enable_tenant_middleware()
+            server.enable_tenant()
             server.setup_api([])
 
             # 验证 TenantMiddleware 被添加且 config 参数正确

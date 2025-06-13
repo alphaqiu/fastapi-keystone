@@ -4,8 +4,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from fastapi_keystone.core.db import tenant_id_context
-from fastapi_keystone.core.middleware import TenantMiddleware
+from fastapi_keystone.core.middlewares import TenantMiddleware, request_context
 
 
 @pytest.fixture
@@ -18,7 +17,7 @@ def app_factory():
 
         @app.get("/")
         async def root(): # type: ignore[reportUnusedFunction]
-            return {"tenant_id": tenant_id_context.get(None)}
+            return {"tenant_id": request_context.get().get("tenant_id", None)}
         return app
     return _app
 
