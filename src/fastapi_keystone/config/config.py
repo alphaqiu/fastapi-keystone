@@ -124,9 +124,7 @@ class ServerConfig(BaseSettings):
         description="Worker process count, this parameter only affects when starting uvicorn internally",
         ge=1,
     )
-    title: str = Field(
-        default="FastAPI Keystone", description="API documentation title"
-    )
+    title: str = Field(default="FastAPI Keystone", description="API documentation title")
     description: str = Field(
         default="FastAPI Keystone", description="API documentation description"
     )
@@ -209,9 +207,7 @@ class DatabaseConfig(BaseSettings):
         extra="allow",
     )
 
-    enable: bool = Field(
-        default=True, description="Whether to enable this database config"
-    )
+    enable: bool = Field(default=True, description="Whether to enable this database config")
     driver: str = Field(default="postgresql+asyncpg", description="Database driver")
     host: str = Field(default="127.0.0.1", description="Database host")
     port: int = Field(default=5432, description="Database port")
@@ -242,10 +238,7 @@ class DatabaseConfig(BaseSettings):
         elif driver == "sqlite+aiosqlite" and self.host.strip() == "memory":
             return f"{self.driver}:///:memory:"
 
-        return (
-            f"{driver}://{self.user}:{self.password}@{self.host}:"
-            f"{self.port}/{self.database}"
-        )
+        return f"{driver}://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
 
 
 _DATABASE_ITEM = TypeVar("_DATABASE_ITEM", bound=Dict[str, DatabaseConfig])
@@ -301,12 +294,8 @@ class Config(BaseSettings):
         extra="allow",
     )
 
-    server: ServerConfig = Field(
-        default_factory=ServerConfig, description="Server config"
-    )
-    logger: LoggerConfig = Field(
-        default_factory=LoggerConfig, description="Logger config"
-    )
+    server: ServerConfig = Field(default_factory=ServerConfig, description="Server config")
+    logger: LoggerConfig = Field(default_factory=LoggerConfig, description="Logger config")
     databases: DatabasesConfig = Field(
         default_factory=lambda: DatabasesConfig({"default": DatabaseConfig()}),
         description="Multi-database config",
@@ -367,9 +356,7 @@ class Config(BaseSettings):
             ) from e
         except Exception as e:
             # 处理其他异常
-            raise ValueError(
-                f"Error processing config section '{key}': {str(e)}"
-            ) from e
+            raise ValueError(f"Error processing config section '{key}': {str(e)}") from e
 
     def clear_section_cache(self, key: Optional[str] = None) -> None:
         """
@@ -383,9 +370,7 @@ class Config(BaseSettings):
         else:
             # 清除指定key相关的所有缓存
             keys_to_remove = [
-                cache_key
-                for cache_key in self._section_cache
-                if cache_key.startswith(f"{key}:")
+                cache_key for cache_key in self._section_cache if cache_key.startswith(f"{key}:")
             ]
             for cache_key in keys_to_remove:
                 del self._section_cache[cache_key]

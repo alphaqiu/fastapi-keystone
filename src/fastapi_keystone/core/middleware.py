@@ -1,27 +1,60 @@
-from logging import getLogger
+import time
+from contextvars import ContextVar
+from logging import Logger, getLogger
 from typing import Optional
 
-from fastapi import Response
-from starlette.datastructures import Headers
+from fastapi import Response, status
+from starlette.datastructures import Headers, MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
+from ulid import ULID
 
 from fastapi_keystone.config import Config
 from fastapi_keystone.core.db import tenant_id_context
+from fastapi_keystone.core.response import APIResponse
 
 logger = getLogger(__name__)
 
+request_context: ContextVar[dict] = ContextVar("request_context", default={})
 
-class Demo(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, config: Config):
+
+class ExceptionMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as e:
+            return APIResponse.error(message=str(e), code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SimpleTraceMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: ASGIApp, logger: Optional[Logger] = None):
         super().__init__(app)
-        self.config = config
+        self.logger = logger
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
-        return await call_next(request)
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        start_time = time.time()
+        ulid = ULID.from_timestamp(start_time)
+        token = request_context.set({"x-request-id": str(ulid)})
+
+        response = await call_next(request)
+
+        end_time = time.time()
+        if self.logger is not None:
+            self.logger.info(
+                (
+                    f"{request.method.upper()} {request.url.path} "
+                    f"Time elapsed:{end_time - start_time:.2f}s "
+                    f"ULID:{str(ulid)}"
+                )
+            )
+
+        headers: MutableHeaders = response.headers
+        headers.append("X-Time-Elapsed", f"{end_time - start_time:.2f}s")
+        headers.append("X-Request-ID", str(ulid))
+
+        request_context.reset(token)
+        return response
 
 
 class TenantMiddleware:

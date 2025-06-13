@@ -30,24 +30,20 @@ class IndexController:
         )
 
     @router.get("/hello/{name}")
-    async def hello(
-        self, name: str = Query(..., description="用户姓名")
-    ) -> APIResponse[dict]:
+    async def hello(self, name: str = Query(..., description="用户姓名")) -> APIResponse[dict]:
         return APIResponse.success(
             {"message": f"Hello, {name}!", "timestamp": "2024-01-01T00:00:00Z"}
         )
 
     @router.get("/health")
     async def health_check(self) -> APIResponse[dict]:
-        return APIResponse.success(
-            {"status": "healthy", "service": "fastapi-keystone-hello-world"}
-        )
+        return APIResponse.success({"status": "healthy", "service": "fastapi-keystone-hello-world"})
 
 
 def main():
     """应用主入口"""
     # 创建配置（使用默认配置）
-    injector = AppManager([ConfigModule("config.json")])
+    injector = AppManager(config_path="config.json", modules=[ConfigModule("config.json")])
     # 创建服务器
     server = injector.get_instance(Server)
 
@@ -61,7 +57,7 @@ def main():
         server.on_startup(on_startup)
         .on_shutdown(on_shutdown)
         .enable_tenant_middleware()
-        .setup_api(injector, [IndexController])
+        .setup_api([IndexController])
     )
 
     # 启动服务器

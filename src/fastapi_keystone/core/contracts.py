@@ -1,7 +1,11 @@
+from __future__ import annotations
+
+from logging import Logger
 from typing import Any, Awaitable, Callable, List, Optional, Protocol, Type, TypeVar
 
 from fastapi import FastAPI
 from injector import ScopeDecorator
+from starlette.middleware import _MiddlewareFactory
 
 T = TypeVar("T")
 
@@ -31,9 +35,22 @@ class ServerProtocol(Protocol):
     def on_shutdown(
         self, func: Optional[Callable[[FastAPI, Any], Awaitable[None]]] = None
     ) -> "ServerProtocol": ...
-    def enable_tenant_middleware(self) -> "ServerProtocol": ...
+    def enable_tenant(self) -> "ServerProtocol": ...
+    def enable_trusted_host(
+        self, trusted_hosts: List[str], www_redirect: bool = True
+    ) -> "ServerProtocol": ...
+    def enable_simple_trace(self, logger: Optional[Logger] = None) -> "ServerProtocol": ...
+    def force_https(self) -> "ServerProtocol": ...
+    def enable_cors(
+        self,
+        *,
+        allow_credentials: bool = True,
+        allow_origins: List[str] = ["*"],
+        allow_methods: List[str] = ["*"],
+        allow_headers: List[str] = ["*"],
+    ) -> "ServerProtocol": ...
     def add_middleware(
-        self, middleware_class: Any, **kwargs: Any
+        self, middleware_class: _MiddlewareFactory, **kwargs: Any
     ) -> "ServerProtocol": ...
     def setup_api(self, controllers: List[Any], **kwargs) -> FastAPI: ...
     def run(self, app: FastAPI): ...

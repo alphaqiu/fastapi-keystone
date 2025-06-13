@@ -508,9 +508,7 @@ class Router:
                 }
             )
             if config:
-                getattr(func, "_route_info", {}).update(
-                    config.model_dump(exclude_none=True)
-                )
+                getattr(func, "_route_info", {}).update(config.model_dump(exclude_none=True))
             return func
 
         return decorator
@@ -604,9 +602,7 @@ def bind_method_to_instance(method, instance):
     return wrapper
 
 
-def register_controllers(
-    app: FastAPI, manager: AppManagerProtocol, controllers: List[Any]
-):
+def register_controllers(app: FastAPI, manager: AppManagerProtocol, controllers: List[Any]):
     """
     Discover and register routes from controller classes.
 

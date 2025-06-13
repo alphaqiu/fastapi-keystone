@@ -135,9 +135,7 @@ def reset_singleton(cls_or_factory) -> None:
     # 如果是装饰器函数，需要清理其内部的实例字典
     if hasattr(cls_or_factory, "__closure__") and cls_or_factory.__closure__:
         for cell in cls_or_factory.__closure__:
-            if hasattr(cell.cell_contents, "clear") and hasattr(
-                cell.cell_contents, "get"
-            ):
+            if hasattr(cell.cell_contents, "clear") and hasattr(cell.cell_contents, "get"):
                 # 这可能是一个字典
                 try:
                     cell.cell_contents.clear()

@@ -94,9 +94,7 @@ class PageQueryMixin:
             if total_stmt is not None:
                 query_stmt = total_stmt
             count_stmt = select(func.count()).select_from(query_stmt.subquery())
-            logger.debug(
-                f"Count SQL: {count_stmt.compile(compile_kwargs={'literal_binds': True})}"
-            )
+            logger.debug(f"Count SQL: {count_stmt.compile(compile_kwargs={'literal_binds': True})}")
             total: int = 0
             try:
                 result_total = await session.scalar(count_stmt)
@@ -119,9 +117,7 @@ class PageQueryMixin:
                 for field in order_by:
                     stmt = stmt.order_by(field)
             stmt = stmt.offset(offset).limit(limit)
-            logger.debug(
-                f"Paging SQL: {stmt.compile(compile_kwargs={'literal_binds': True})}"
-            )
+            logger.debug(f"Paging SQL: {stmt.compile(compile_kwargs={'literal_binds': True})}")
             try:
                 result = await session.execute(stmt)
                 if use_custom_columns:

@@ -64,9 +64,7 @@ class AppModule(Module):
 
     @provider
     @injector_singleton
-    def provide_user_service(
-        self, db: DatabaseService, cache: CacheService
-    ) -> UserService:
+    def provide_user_service(self, db: DatabaseService, cache: CacheService) -> UserService:
         return UserService(db, cache)
 
 

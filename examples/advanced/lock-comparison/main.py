@@ -19,9 +19,7 @@ class ThreadingSingleton:
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    print(
-                        f"[Threading] 创建实例在线程 {threading.current_thread().name}"
-                    )
+                    print(f"[Threading] 创建实例在线程 {threading.current_thread().name}")
                     cls._instance = super().__new__(cls)
                     cls._instance._initialized = False
         return cls._instance
@@ -97,9 +95,7 @@ async def test_asyncio_lock_limitations():
     # 演示错误用法（注释掉避免实际错误）
     print("\n错误示例（如果取消注释会报错）:")
     print("# def sync_function():")
-    print(
-        "#     instance = await AsyncioSingleton.get_instance('sync')  # SyntaxError!"
-    )
+    print("#     instance = await AsyncioSingleton.get_instance('sync')  # SyntaxError!")
     print("#     return instance")
 
 

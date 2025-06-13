@@ -49,12 +49,8 @@ class AuthConfig(BaseSettings):
 
     secret_key: str = Field(description="JWT密钥")
     algorithm: str = Field(default="HS256", description="JWT算法")
-    access_token_expire_minutes: int = Field(
-        default=30, description="访问令牌过期时间（分钟）"
-    )
-    refresh_token_expire_days: int = Field(
-        default=7, description="刷新令牌过期时间（天）"
-    )
+    access_token_expire_minutes: int = Field(default=30, description="访问令牌过期时间（分钟）")
+    refresh_token_expire_days: int = Field(default=7, description="刷新令牌过期时间（天）")
     enable_refresh_token: bool = Field(default=True, description="是否启用刷新令牌")
 
 
