@@ -7,7 +7,7 @@ from injector import Injector, Module, ScopeDecorator
 from injector import singleton as injector_singleton
 
 from fastapi_keystone.config import Config, ConfigModule
-from fastapi_keystone.core.contracts import ServerProtocol
+from fastapi_keystone.core.contracts import AppManagerProtocol, ServerProtocol
 from fastapi_keystone.core.db import DatabaseModule
 from fastapi_keystone.core.logger import setup_logger
 
@@ -39,7 +39,10 @@ class AppManager:
         ]
         modules = modules or []
         self.injector = Injector(_internal_modules + modules)
-        self.injector.binder.bind(AppManager, to=self, scope=injector_singleton)
+        # self.injector.binder.bind(AppManager, to=self, scope=injector_singleton)
+        self.injector.binder.bind(AppManagerProtocol, to=self, scope=injector_singleton)  # type: ignore[type-abstract]
+        # from fastapi_keystone.core.server import Server
+        # self.injector.binder.bind(ServerProtocol, to=Server, scope=injector_singleton)  # type: ignore[type-abstract]
         setup_logger(self.injector.get(Config))
         logger.info("AppManager initialized. 🚀 🚀 🚀")
 
