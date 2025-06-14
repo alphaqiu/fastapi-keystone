@@ -1,15 +1,18 @@
 import asyncio
 from logging import getLogger
-from typing import List, Optional
+from typing import Annotated, List, Optional
 
 from fastapi import Depends, FastAPI, Query, Request, Response
 from fastapi.responses import StreamingResponse
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 
 from fastapi_keystone.config import Config
 from fastapi_keystone.core.app import AppManager
 from fastapi_keystone.core.middlewares import request_context
 from fastapi_keystone.core.routing import group, router
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 logger = getLogger(__name__)
 
@@ -85,6 +88,7 @@ class DemoController:
     @router.get("/hello2")
     async def get_hello2(
         self,
+        token: Annotated[str, Depends(oauth2_scheme)],
         name: str = Query(default="World", title="姓名", description="姓名"),
     ):
         ctx = request_context.get()
@@ -94,6 +98,7 @@ class DemoController:
         logger.info(f"Request ID: {req_id=}")
         logger.info(f"Tenant ID: {tenant_id=}")
         logger.info(f"Value: {val=}")
+        logger.info(f"Token: {token=}")
         return {"message": f"Hello from fastapi-keystone-demo! {name}"}
 
 
