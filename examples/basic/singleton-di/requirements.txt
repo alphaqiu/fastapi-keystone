@@ -1,2 +1,2 @@
-fastapi-keystone>=0.0.5
+fastapi-keystone>=0.0.14
 injector>=0.22.0 

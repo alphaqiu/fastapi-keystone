@@ -1,13 +1,12 @@
 """
-依赖注入器单例模式示例
+依赖注入管理器示例
 
-演示 FastAPI Keystone 中 AppInjector 的单例模式使用
+演示 FastAPI Keystone 中 AppManager 的依赖注入使用
 """
 
 from injector import Module, provider
 from injector import singleton as injector_singleton
 
-from fastapi_keystone.common.singleton import reset_singleton
 from fastapi_keystone.core.app import AppManager
 
 
@@ -68,71 +67,64 @@ class AppModule(Module):
         return UserService(db, cache)
 
 
-def test_singleton_di():
-    """测试依赖注入器单例"""
-    print("=== 测试 AppInjector 单例模式 ===")
+def test_app_manager_di():
+    """测试应用管理器依赖注入"""
+    print("=== 测试 AppManager 依赖注入 ===")
 
-    # 创建两个 AppInjector 实例
-    injector1 = AppManager([AppModule()])
-    injector2 = AppManager([AppModule()])
+    # 创建两个 AppManager 实例
+    manager1 = AppManager("config.json", [AppModule()])
+    manager2 = AppManager("config.json", [AppModule()])
 
-    print(f"injector1 is injector2: {injector1 is injector2}")
-    print(f"injector1 id: {id(injector1)}")
-    print(f"injector2 id: {id(injector2)}")
+    print(f"manager1 is manager2: {manager1 is manager2} (不同实例)")
+    print(f"manager1 id: {id(manager1)}")
+    print(f"manager2 id: {id(manager2)}")
 
-    # 验证是同一个实例
-    assert injector1 is injector2, "AppInjector 应该是单例"
+    # AppManager 不是单例，但服务可以是单例
+    assert manager1 is not manager2, "AppManager 不应该是单例"
 
-    print("\n=== 测试依赖注入 ===")
+    print("\n=== 测试跨管理器的服务隔离 ===")
 
-    # 从两个"不同"的注入器获取相同的服务
-    user_service1 = injector1.get_instance(UserService)
-    user_service2 = injector2.get_instance(UserService)
+    # 从两个不同的管理器获取相同的服务
+    user_service1 = manager1.get_instance(UserService)
+    user_service2 = manager2.get_instance(UserService)
 
-    print(f"user_service1 is user_service2: {user_service1 is user_service2}")
+    # 不同 AppManager 实例的服务是隔离的
+    print(f"跨管理器服务是隔离的: user_service1 is user_service2: {user_service1 is user_service2}")
 
     # 使用服务
     result = user_service1.get_user(123)
     print(f"服务调用结果: {result}")
 
 
-def test_multiple_modules():
-    """测试多个模块的情况"""
-    print("\n=== 测试多个模块 ===")
+def test_same_manager_singleton():
+    """测试同一管理器内的服务单例性"""
+    print("\n=== 测试同一管理器内的服务单例性 ===")
 
-    class SecondaryModule(Module):
-        pass
+    # 创建一个管理器
+    manager = AppManager("config.json", [AppModule()])
 
-    # 重置单例以便重新测试
-    reset_singleton(AppManager)
+    # 从同一个管理器多次获取服务
+    user_service1 = manager.get_instance(UserService)
+    user_service2 = manager.get_instance(UserService)
+    db_service1 = manager.get_instance(DatabaseService)
+    db_service2 = manager.get_instance(DatabaseService)
 
-    # 创建带多个模块的注入器
-    injector1 = AppManager([AppModule(), SecondaryModule()])
-    injector2 = AppManager([AppModule(), SecondaryModule()])
+    print(f"同一管理器内UserService是单例: {user_service1 is user_service2}")
+    print(f"同一管理器内DatabaseService是单例: {db_service1 is db_service2}")
 
-    print(f"多模块注入器是否单例: {injector1 is injector2}")
-
-    # 获取服务实例
-    user_service = injector1.get_instance(UserService)
-    db_service = injector1.get_instance(DatabaseService)
-    cache_service = injector1.get_instance(CacheService)
-
-    print(f"UserService: {type(user_service).__name__}")
-    print(f"DatabaseService: {type(db_service).__name__}")
-    print(f"CacheService: {type(cache_service).__name__}")
+    print(f"UserService: {type(user_service1).__name__}")
+    print(f"DatabaseService: {type(db_service1).__name__}")
+    print(f"CacheService: {type(manager.get_instance(CacheService)).__name__}")
 
 
 def test_injector_access():
     """测试底层注入器访问"""
     print("\n=== 测试底层注入器访问 ===")
 
-    # 重置单例
-    reset_singleton(AppManager)
-
-    app_injector = AppManager([AppModule()])
+    app_manager = AppManager("config.json", [AppModule()])
 
     # 获取底层注入器
-    raw_injector = app_injector.get_injector()
+    raw_injector = app_manager.get_injector()
     print(f"底层注入器类型: {type(raw_injector)}")
 
     # 直接使用底层注入器
@@ -140,9 +132,28 @@ def test_injector_access():
     print(f"通过底层注入器获取的服务: {type(user_service).__name__}")
 
 
+def test_server_setup():
+    """测试服务器设置"""
+    print("\n=== 测试服务器设置 ===")
+    
+    try:
+        # 创建应用管理器
+        manager = AppManager("config.json", [AppModule()])
+        
+        # 设置服务器（这里不传入控制器，只是测试API）
+        server = manager.setup_server([])
+        
+        print(f"服务器类型: {type(server).__name__}")
+        print(f"FastAPI 应用: {type(server.get_app()).__name__}")
+        
+    except Exception as e:
+        print(f"服务器设置测试跳过: {e}")
+
+
 if __name__ == "__main__":
-    test_singleton_di()
-    test_multiple_modules()
+    test_app_manager_di()
+    test_same_manager_singleton()
     test_injector_access()
+    test_server_setup()
 
     print("\n✅ 所有测试完成！")
