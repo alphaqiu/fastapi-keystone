@@ -1,6 +1,6 @@
 [project]
 name = "fastapi-keystone"
-version = "0.0.13"
+version = "0.0.14"
 description = "🚀 基于 FastAPI 的现代化快速开发框架，提供企业级的多租户、依赖注入、路由管理等特性"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -66,7 +66,7 @@ dev = [
 ]
 
 [bumpver]
-current_version = "0.0.13"
+current_version = "0.0.14"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

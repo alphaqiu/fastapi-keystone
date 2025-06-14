@@ -3,7 +3,7 @@ import pytest
 from fastapi import FastAPI
 from starlette.testclient import TestClient
 
-from src.fastapi_keystone.core.middlewares import EtagMiddleware, request_context
+from fastapi_keystone.core.middlewares import EtagMiddleware, request_context
 
 
 @pytest.fixture

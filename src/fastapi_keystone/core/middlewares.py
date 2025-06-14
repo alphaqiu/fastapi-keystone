@@ -2,7 +2,7 @@ import hashlib
 import time
 from contextvars import ContextVar
 from logging import Logger, getLogger
-from typing import Any, NotRequired, Optional, TypedDict
+from typing import Any, Optional, TypedDict
 
 from fastapi import Response, status
 from starlette.datastructures import Headers, MutableHeaders
@@ -17,7 +17,7 @@ from fastapi_keystone.core.response import APIResponse
 logger = getLogger(__name__)
 
 
-class ContextDict(TypedDict):
+class ContextDict(TypedDict, total=False):
     """
     Typed dictionary for storing request-scoped context data.
 
@@ -37,9 +37,9 @@ class ContextDict(TypedDict):
         })
     """
 
-    x_request_id: NotRequired[str]
-    value: NotRequired[Any]
-    tenant_id: NotRequired[str]
+    x_request_id: str
+    value: Any
+    tenant_id: str
 
 
 request_context: ContextVar[ContextDict] = ContextVar("request_context", default={})
