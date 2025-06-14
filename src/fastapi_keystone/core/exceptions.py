@@ -1,9 +1,13 @@
+from logging import getLogger
+
 from fastapi import HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from fastapi_keystone.core.response import APIResponse
+
+logger = getLogger(__name__)
 
 
 class APIException(Exception):
@@ -33,10 +37,7 @@ def api_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         JSONResponse: Standardized error response.
     """
     if isinstance(exc, APIException):
-        return JSONResponse(
-            status_code=exc.code,
-            content=APIResponse.error(exc.message, exc.code).model_dump(),
-        )
+        return APIResponse.error(exc.message, exc.code)
 
     return global_exception_handler(request, exc)
 
@@ -53,10 +54,7 @@ def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         JSONResponse: Standardized error response.
     """
     if isinstance(exc, HTTPException):
-        return JSONResponse(
-            status_code=exc.status_code,
-            content=APIResponse.error(exc.detail, exc.status_code).model_dump(),
-        )
+        return APIResponse.error(exc.detail, exc.status_code)
     return global_exception_handler(request, exc)
 
 
@@ -72,25 +70,25 @@ def validation_exception_handler(request: Request, exc: Exception) -> JSONRespon
         JSONResponse: Standardized error response with validation details.
     """
     if isinstance(exc, RequestValidationError):
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content=APIResponse.error(
-                message="Validation Error",
-                data=jsonable_encoder(exc.errors()),
-                code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            ).model_dump(),
+        return APIResponse.error(
+            message="Validation Error",
+            data=jsonable_encoder(exc.errors()),
+            code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
     return global_exception_handler(request, exc)
 
 
 def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """全局异常处理"""
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=APIResponse.error(
-            "Internal Server Error", status.HTTP_500_INTERNAL_SERVER_ERROR
-        ).model_dump(),
-    )
+    import traceback
+
+    # 打印完整的堆栈跟踪到日志
+    logger.error(f"Global exception handler caught: {exc}")
+    logger.error(f"Exception type: {type(exc)}")
+    logger.error(f"Traceback: {traceback.format_exc()}")
+
+    # 直接返回异常消息，不包装成列表
+    return APIResponse.error(str(exc), status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DatabaseError(Exception):

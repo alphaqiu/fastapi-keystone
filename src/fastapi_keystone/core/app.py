@@ -3,7 +3,7 @@ from __future__ import annotations
 from logging import getLogger
 from typing import Any, List, Optional, Type, TypeVar, Union
 
-from injector import Injector, Module, ScopeDecorator
+from injector import Injector, Module, ScopeDecorator, provider
 from injector import singleton as injector_singleton
 
 from fastapi_keystone.config import Config, ConfigModule
@@ -13,6 +13,16 @@ from fastapi_keystone.core.logger import setup_logger
 
 logger = getLogger(__name__)
 T = TypeVar("T")
+
+
+class AppManagerProvider(Module):
+    def __init__(self, app_manager: AppManager):
+        self.app_manager = app_manager
+
+    @provider
+    @injector_singleton
+    def get_app_manager(self) -> AppManagerProtocol:
+        return self.app_manager
 
 
 class AppManager:
@@ -36,21 +46,20 @@ class AppManager:
         _internal_modules: List[Union[Module, Type[Module]]] = [
             ConfigModule(config_path),
             DatabaseModule,
+            AppManagerProvider(self),
         ]
         modules = modules or []
         self.injector = Injector(_internal_modules + modules)
-        # self.injector.binder.bind(AppManager, to=self, scope=injector_singleton)
-        self.injector.binder.bind(AppManagerProtocol, to=self, scope=injector_singleton)  # type: ignore[type-abstract]
-        # from fastapi_keystone.core.server import Server
-        # self.injector.binder.bind(ServerProtocol, to=Server, scope=injector_singleton)  # type: ignore[type-abstract]
         setup_logger(self.injector.get(Config))
         logger.info("AppManager initialized. 🚀 🚀 🚀")
 
-    def get_server(self) -> ServerProtocol:
+    def setup_server(self, controllers: List[Any]) -> ServerProtocol:
         # 延迟导入，避免循环依赖
         from fastapi_keystone.core.server import Server
 
-        return self.injector.get(Server)
+        server = self.injector.get(Server)
+        server.setup_api(controllers)
+        return server
 
     def get_instance(self, cls: Type[T]) -> T:
         """

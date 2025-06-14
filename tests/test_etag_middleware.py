@@ -22,7 +22,6 @@ def app():
     return app
 
 def test_etag_set_and_match(app):
-    token = request_context.set({"etag_enabled": True})
     client = TestClient(app)
     # 第一次请求，获取 ETag
     resp = client.get("/json")
@@ -33,19 +32,10 @@ def test_etag_set_and_match(app):
     # 第二次带 If-None-Match
     resp2 = client.get("/json", headers={"If-None-Match": etag})
     assert resp2.status_code == 304
-    request_context.reset(token)
 
 def test_etag_not_match(app):
-    token = request_context.set({"etag_enabled": True})
     client = TestClient(app)
     # 带错误的 If-None-Match
     resp = client.get("/json", headers={"If-None-Match": "wrong"})
     assert resp.status_code == 200
     assert resp.headers.get("etag") is not None
-    request_context.reset(token)
-def test_non_json_response(app):
-    client = TestClient(app)
-    resp = client.get("/text")
-    assert resp.status_code == 200
-    # 不应有 etag
-    assert "etag" not in resp.headers

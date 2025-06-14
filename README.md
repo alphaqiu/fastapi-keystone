@@ -3,26 +3,26 @@
 [![PyPI version](https://badge.fury.io/py/fastapi-keystone.svg?icon=si%3Apython)](https://badge.fury.io/py/fastapi-keystone)
 [![Python Version](https://img.shields.io/pypi/pyversions/fastapi-keystone.svg)](https://pypi.org/project/fastapi-keystone/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-🚀 **基于 FastAPI 的现代化快速开发框架**
+🚀 **一个基于 FastAPI 的轻量级开发框架，提供一些常用的企业级功能组件。**
 
-FastAPI Keystone 是一个企业级的 Python Web 开发框架，基于 FastAPI 构建，采用契约优先的设计理念，为开发者提供开箱即用的多租户、依赖注入、路由管理、配置管理等企业级特性。
+## 项目简介
 
-## ✨ 核心特性
+FastAPI Keystone 是一个围绕 FastAPI 构建的开发框架，旨在简化常见的 Web 应用开发任务。它提供了一些开箱即用的功能，如配置管理、路由装饰器、标准化响应格式、依赖注入集成等。
 
-- 🎯 **契约优先**：基于 Pydantic 的强类型配置和数据模型
-- 🏢 **多租户支持**：内置多数据库配置管理
-- 💉 **依赖注入**：基于 injector 的 DI 容器
-- 🎨 **装饰器路由**：支持类级别的路由定义
-- ⚡ **异步优先**：全面支持 async/await
-- 🛡️ **异常处理**：统一的 API 异常处理机制
-- 📝 **标准化响应**：统一的 API 响应格式
-- 🔧 **灵活配置**：支持 JSON、环境变量、.env 文件
+**注意：** 本项目仍在开发阶段，API 可能会发生变化。建议在生产环境使用前仔细评估。
 
-## 📦 安装
+## 核心特性
 
-### 使用 pip
+- **配置管理**：支持 JSON/YAML 配置文件，环境变量覆盖
+- **路由装饰器**：基于类的路由定义方式
+- **标准化响应**：统一的 API 响应格式
+- **依赖注入**：与 injector 库的集成
+- **中间件支持**：内置常用中间件（CORS、GZIP、异常处理等）
+- **多租户支持**：基础的多数据库配置管理
+- **分页查询**：简单的分页查询工具
+
+## 安装
 
 ```bash
 pip install fastapi-keystone
@@ -34,129 +34,49 @@ pip install fastapi-keystone
 uv add fastapi-keystone
 ```
 
-### 开发依赖
-
-```bash
-pip install fastapi-keystone[dev]
-```
-
-## 🚀 快速开始
+## 快速开始
 
 ### 1. 基础使用
 
 ```python
 import uvicorn
-from injector import Injector
-from fastapi_keystone.config import ConfigModule
 from fastapi_keystone.core.response import APIResponse
-from fastapi_keystone.core.routing import group, router
-from fastapi_keystone.core.server import Server
-from fastapi_keystone.core.di import AppInjector
+from fastapi_keystone.core.routing import Router, group
+from fastapi_keystone.core.app import AppManager
+
+# 创建路由器
+router = Router()
 
 @group("/api/v1")
-class IndexController:
+class HelloController:
     @router.get("/hello")
     async def hello_world(self) -> APIResponse[str]:
         return APIResponse.success("Hello, FastAPI Keystone!")
 
-    @router.get("/users/{user_id}")
-    async def get_user(self, user_id: int) -> APIResponse[dict]:
-        return APIResponse.success({"id": user_id, "name": f"User {user_id}"})
+    @router.get("/hello/{name}")
+    async def hello_name(self, name: str) -> APIResponse[str]:
+        return APIResponse.success(f"Hello, {name}!")
 
 def main():
-    # 创建依赖注入容器
-    injector = AppInjector([ConfigModule("config.json")])
-    
-    # 创建服务器
-    server = injector.get_instance(Server)
-    
-    # 设置API
-    app = server.setup_api(injector, [IndexController])
+    # 创建应用管理器并设置服务器
+    manager = AppManager("config.json", modules=[])
+    server = manager.setup_server([HelloController])
     
     # 启动服务器
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(server.get_app(), host="0.0.0.0", port=8000)
 
 if __name__ == "__main__":
     main()
 ```
 
-### 2. 类级别路由定义与依赖注入
+### 2. 配置文件示例
 
-```python
-import uvicorn
-from typing import List
-from injector import Module, provider, singleton, inject
-from fastapi_keystone.config import ConfigModule
-from fastapi_keystone.core.response import APIResponse
-from fastapi_keystone.core.routing import group, router
-from fastapi_keystone.core.server import Server
-from fastapi_keystone.core.di import AppInjector
-
-# 定义用户服务
-class UserService:
-    def get_user(self, user_id: int):
-        return {"id": user_id, "name": f"User {user_id}"}
-    
-    def get_users(self):
-        return [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]
-
-# 服务模块，用于依赖注入
-class ServiceModule(Module):
-    @provider
-    @singleton
-    def user_service(self) -> UserService:
-        return UserService()
-
-# 使用类级别路由
-@group("/api/v1/users")
-class UserController:
-    @inject
-    def __init__(self, user_service: UserService):
-        self.user_service = user_service
-    
-    @router.get("/{user_id}")
-    async def get_user(self, user_id: int) -> APIResponse[dict]:
-        user = self.user_service.get_user(user_id)
-        return APIResponse.success(user)
-    
-    @router.get("/")
-    async def list_users(self) -> APIResponse[List[dict]]:
-        users = self.user_service.get_users()
-        return APIResponse.success(users)
-    
-    @router.post("/")
-    async def create_user(self, user_data: dict) -> APIResponse[dict]:
-        # 创建用户逻辑
-        return APIResponse.success({"message": "User created", "data": user_data})
-
-def main():
-    # 创建依赖注入容器
-    injector = AppInjector([
-        ConfigModule("config.json"),
-        ServiceModule()
-    ])
-    
-    # 创建服务器
-    server = injector.get_instance(Server)
-    
-    # 设置API
-    app = server.setup_api(injector, [UserController])
-    
-    # 启动服务器
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
-if __name__ == "__main__":
-    main()
-```
-
-### 3. 配置管理
-
-创建 `config.json` 文件：
+创建 `config.json`：
 
 ```json
 {
   "server": {
-    "title": "My FastAPI Keystone App",
+    "title": "My FastAPI App",
     "description": "基于 FastAPI Keystone 的应用",
     "version": "1.0.0",
     "host": "0.0.0.0",
@@ -168,289 +88,234 @@ if __name__ == "__main__":
   },
   "databases": {
     "default": {
-      "enable": true,
       "host": "localhost",
-      "port": 3306,
-      "user": "root",
+      "port": 5432,
+      "user": "postgres",
       "password": "password",
       "database": "myapp"
-    },
-    "tenant_a": {
-      "enable": true,
-      "host": "localhost",
-      "port": 3306,
-      "user": "root",
-      "password": "password",
-      "database": "tenant_a_db"
     }
   }
 }
 ```
 
-使用配置：
+或使用 YAML 格式 `config.yaml`：
+
+```yaml
+server:
+  title: My FastAPI App
+  description: 基于 FastAPI Keystone 的应用
+  version: 1.0.0
+  host: 0.0.0.0
+  port: 8000
+
+logger:
+  level: INFO
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+databases:
+  default:
+    host: localhost
+    port: 5432
+    user: postgres
+    password: password
+    database: myapp
+```
+
+### 3. 依赖注入
 
 ```python
-from injector import inject
-from fastapi_keystone.config import Config, ConfigModule
-from fastapi_keystone.core.server import Server
-from fastapi_keystone.core.di import AppInjector
+from injector import Module, provider, singleton, inject
+from fastapi_keystone.config import Config
+from fastapi_keystone.core.app import AppManager
 
-@group("/api/v1")
-class ConfigController:
-    @inject
+# 定义服务
+class UserService:
     def __init__(self, config: Config):
         self.config = config
     
-    @router.get("/info")
-    async def get_app_info(self) -> APIResponse[dict]:
-        return APIResponse.success({
-            "title": self.config.server.title,
-            "version": self.config.server.version,
-            "db_host": self.config.databases.root["default"].host
-        })
+    def get_user(self, user_id: int):
+        return {"id": user_id, "name": f"User {user_id}"}
 
-def main():
-    # 创建依赖注入容器，自动加载配置
-    injector = AppInjector([ConfigModule("config.json")])
-    
-    # 创建服务器
-    server = injector.get_instance(Server)
-    
-    # 设置API
-    app = server.setup_api(injector, [ConfigController])
-    
-    return app
-```
-
-### 4. 依赖注入
-
-```python
-import uvicorn
-from injector import Module, provider, singleton, inject
-from fastapi_keystone.config import Config, ConfigModule
-from fastapi_keystone.core.response import APIResponse
-from fastapi_keystone.core.routing import group, router
-from fastapi_keystone.core.server import Server
-from fastapi_keystone.core.di import AppInjector
-
-class DatabaseService:
-    def __init__(self, db_config):
-        self.db_config = db_config
-    
-    def get_connection(self):
-        return f"Connected to {self.db_config.host}:{self.db_config.port}"
-
+# 依赖注入模块
 class ServiceModule(Module):
     @provider
     @singleton
-    def database_service(self, config: Config) -> DatabaseService:
-        return DatabaseService(config.databases.root["default"])
+    def user_service(self, config: Config) -> UserService:
+        return UserService(config)
 
-# 在控制器中使用
-@group("/api/v1/db")
-class DatabaseController:
+@group("/api/v1/users")
+class UserController:
     @inject
-    def __init__(self, db_service: DatabaseService):
-        self.db_service = db_service
+    def __init__(self, user_service: UserService):
+        self.user_service = user_service
     
-    @router.get("/status")
-    async def get_db_status(self) -> APIResponse[str]:
-        status = self.db_service.get_connection()
-        return APIResponse.success(status)
+    @router.get("/{user_id}")
+    async def get_user(self, user_id: int) -> APIResponse[dict]:
+        user = self.user_service.get_user(user_id)
+        return APIResponse.success(user)
 
 def main():
-    # 设置依赖注入容器
-    injector = AppInjector([
-        ConfigModule("config.json"),
-        ServiceModule()
-    ])
+    # 创建应用管理器并注册模块
+    manager = AppManager("config.json", modules=[ServiceModule()])
+    server = manager.setup_server([UserController])
     
-    # 创建服务器
-    server = injector.get_instance(Server)
-    
-    # 设置API
-    app = server.setup_api(injector, [DatabaseController])
-    
-    # 启动服务器
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    return server.get_app()
+```
 
-if __name__ == "__main__":
-    main()
+### 4. 中间件配置
+
+```python
+from fastapi_keystone.core.server import Server
+
+def main():
+    manager = AppManager("config.json", modules=[])
+    
+    # 获取服务器实例并配置中间件
+    server = manager.get_instance(Server)
+    server.enable_cors(
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"]
+    )
+    server.enable_simple_trace()
+    # Gzip 默认启用，如需禁用可调用 server.disable_gzip()
+    
+    # 设置 API
+    app = server.setup_api([HelloController])
+    return app
 ```
 
 ### 5. 异常处理
 
 ```python
 from fastapi_keystone.core.exceptions import APIException
-from fastapi_keystone.core.response import APIResponse
 
-# 自定义异常
-class UserNotFoundError(APIException):
-    def __init__(self, user_id: int):
-        super().__init__(
-            status_code=404,
-            code="USER_NOT_FOUND",
-            message=f"User with ID {user_id} not found"
-        )
-
-@router.get("/users/{user_id}")
-async def get_user(user_id: int) -> APIResponse[dict]:
-    if user_id > 1000:
-        raise UserNotFoundError(user_id)
-    
-    return APIResponse.success({"id": user_id, "name": f"User {user_id}"})
+@group("/api/v1/users")
+class UserController:
+    @router.get("/{user_id}")
+    async def get_user(self, user_id: int) -> APIResponse[dict]:
+        if user_id <= 0:
+            raise APIException("Invalid user ID", code=400)
+        
+        if user_id > 1000:
+            raise APIException("User not found", code=404)
+        
+        return APIResponse.success({"id": user_id, "name": f"User {user_id}"})
 ```
 
-### 6. 中间件使用
+## API 响应格式
 
-```python
-from fastapi_keystone.core.middleware import BaseMiddleware
+所有 API 响应都遵循统一格式：
 
-class RequestLoggingMiddleware(BaseMiddleware):
-    async def dispatch(self, request, call_next):
-        print(f"Processing request: {request.method} {request.url}")
-        response = await call_next(request)
-        print(f"Response status: {response.status_code}")
-        return response
-
-# 添加中间件
-server.add_middleware(RequestLoggingMiddleware)
-
-# 在路由中使用中间件
-@router.get("/protected", middlewares=[RequestLoggingMiddleware])
-async def protected_endpoint() -> APIResponse[str]:
-    return APIResponse.success("This endpoint is protected by middleware")
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "name": "User 1"
+  }
+}
 ```
 
-## 📖 API 文档
+错误响应：
 
-启动应用后，访问以下地址查看自动生成的 API 文档：
+```json
+{
+  "code": 404,
+  "message": "User not found",
+  "data": null
+}
+```
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI JSON**: http://localhost:8000/openapi.json
+分页响应：
 
-## 🏗️ 项目结构
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {"id": 1, "name": "User 1"},
+    {"id": 2, "name": "User 2"}
+  ],
+  "total": 100,
+  "page": 1,
+  "size": 10
+}
+```
 
-推荐的项目结构：
+## 项目结构建议
 
 ```
-my-fastapi-app/
+my-app/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # 应用入口
 │   ├── config.json          # 配置文件
 │   ├── controllers/         # 控制器
 │   │   ├── __init__.py
-│   │   ├── user_controller.py
-│   │   └── auth_controller.py
+│   │   └── user_controller.py
 │   ├── services/           # 业务逻辑
 │   │   ├── __init__.py
-│   │   ├── user_service.py
-│   │   └── auth_service.py
-│   ├── models/             # 数据模型
-│   │   ├── __init__.py
-│   │   ├── user.py
-│   │   └── auth.py
-│   └── middleware/         # 自定义中间件
+│   │   └── user_service.py
+│   └── models/             # 数据模型
 │       ├── __init__.py
-│       └── auth_middleware.py
+│       └── user.py
 ├── tests/                  # 测试文件
-├── requirements.txt        # 依赖列表
+├── requirements.txt
 └── README.md
 ```
 
-## 🔧 高级配置
+## 配置扩展
 
-### 环境变量支持
-
-```python
-# 支持环境变量覆盖配置
-import os
-os.environ["SERVER__HOST"] = "127.0.0.1"
-os.environ["DATABASES__DEFAULT__HOST"] = "prod-db.example.com"
-
-config = await load_config("config.json")  # 环境变量会覆盖文件配置
-```
-
-### 自定义响应格式
+框架支持自定义配置段：
 
 ```python
-from fastapi_keystone.core.response import APIResponse
+from pydantic import BaseModel, Field
+from typing import Optional
 
-# 成功响应
-response = APIResponse.success(
-    data={"user_id": 123, "name": "Alice"},
-    message="User retrieved successfully"
-)
+class RedisConfig(BaseModel):
+    host: str = Field(default="127.0.0.1")
+    port: int = Field(default=6379)
+    password: Optional[str] = None
+    database: int = Field(default=0)
 
-# 错误响应
-response = APIResponse.error(
-    code="VALIDATION_ERROR",
-    message="Invalid input parameters",
-    details={"field": "email", "error": "Invalid format"}
-)
+# 在配置文件中添加
+{
+  "redis": {
+    "host": "redis.example.com",
+    "port": 6380,
+    "password": "secret",
+    "database": 1
+  }
+}
 
-# 分页响应
-response = APIResponse.paginated(
-    data=[{"id": 1}, {"id": 2}],
-    total=100,
-    page=1,
-    page_size=10
-)
+# 在代码中使用
+config = load_config("config.json")
+redis_config = config.get_section("redis", RedisConfig)
 ```
 
-## 🧪 测试
-
-运行测试：
+## 测试
 
 ```bash
-# 运行所有测试
+# 运行测试
 pytest
 
 # 运行测试并查看覆盖率
-pytest --cov=app --cov-report=html
+pytest --cov=src --cov-report=html
 
-# 运行特定测试文件
-pytest tests/test_user_controller.py
+# 运行特定测试
+pytest tests/test_routing.py
 ```
 
-示例测试：
-
-```python
-import pytest
-from fastapi.testclient import TestClient
-from app.main import app
-
-client = TestClient(app)
-
-def test_hello_world():
-    response = client.get("/hello")
-    assert response.status_code == 200
-    assert response.json()["success"] is True
-    assert response.json()["data"] == "Hello, FastAPI Keystone!"
-
-@pytest.mark.asyncio
-async def test_user_controller():
-    response = client.get("/api/v1/users/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert data["data"]["id"] == 1
-```
-
-## 🤝 贡献指南
-
-我们欢迎所有形式的贡献！请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解详细信息。
-
-### 开发环境设置
+## 开发
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-username/fastapi-keystone.git
+# 克隆项目
+git clone https://github.com/alphaqiu/fastapi-keystone.git
 cd fastapi-keystone
 
-# 使用 uv 安装依赖
+# 安装开发依赖
 uv sync
 
 # 运行测试
@@ -464,176 +329,29 @@ uv run isort .
 uv run ruff check .
 ```
 
-### 提交规范
+## 注意事项
 
-- 🐛 `fix:` 修复 bug
-- ✨ `feat:` 新功能
-- 📝 `docs:` 文档更新
-- 🎨 `style:` 代码格式化
-- ♻️ `refactor:` 代码重构
-- ✅ `test:` 添加测试
-- 🔧 `chore:` 构建或工具变动
+1. **版本兼容性**：本项目仍在开发中，API 可能会发生变化
+2. **生产使用**：建议在生产环境使用前进行充分测试
+3. **依赖管理**：确保 FastAPI 和相关依赖版本兼容
+4. **配置安全**：生产环境中注意保护敏感配置信息
 
-## 📄 许可证
+## 许可证
 
 本项目采用 [MIT License](LICENSE) 许可证。
 
+## 贡献
 
-## 📞 联系我们
+欢迎提交 Issue 和 Pull Request。在提交代码前，请确保：
 
-- 🐛 **问题反馈**: [GitHub Issues](https://github.com/your-username/fastapi-keystone/issues)
-- 💬 **讨论**: [GitHub Discussions](https://github.com/your-username/fastapi-keystone/discussions)
+- 代码通过所有测试
+- 遵循项目的代码风格
+- 添加必要的测试用例
+- 更新相关文档
 
-## ❓ 常见问题 (FAQ)
+## 链接
 
-### Q: 如何启用多租户支持？
-
-A: 在配置文件中定义多个数据库配置，每个租户对应一个数据库：
-
-```json
-{
-  "databases": {
-    "default": { "host": "localhost", "database": "main_db" },
-    "tenant_a": { "host": "localhost", "database": "tenant_a_db" },
-    "tenant_b": { "host": "localhost", "database": "tenant_b_db" }
-  }
-}
-```
-
-### Q: 如何自定义异常处理？
-
-A: 继承 `APIException` 类并在 Server 中注册异常处理器：
-
-```python
-class CustomException(APIException):
-    def __init__(self, message: str):
-        super().__init__(status_code=400, code="CUSTOM_ERROR", message=message)
-
-server.app.add_exception_handler(CustomException, custom_exception_handler)
-```
-
-### Q: 如何添加认证中间件？
-
-A: 创建自定义中间件并在路由或全局级别应用：
-
-```python
-class AuthMiddleware(BaseMiddleware):
-    async def dispatch(self, request, call_next):
-        # 认证逻辑
-        if not request.headers.get("Authorization"):
-            raise APIException(401, "AUTH_REQUIRED", "Authentication required")
-        return await call_next(request)
-
-# 全局应用
-server.add_middleware(AuthMiddleware)
-
-# 或在特定路由应用
-@router.get("/protected", middlewares=[AuthMiddleware])
-async def protected_route():
-    pass
-```
-
-## ✨ 未来计划
-
-- [ ] 添加更多企业级特性，如审计日志、缓存、分布式锁等
-- [ ] 提供更多开箱即用的中间件，如 CORS、GZIP、JWT 认证等
-- [ ] 支持更多数据库，如 MySQL、Redis、MongoDB 等
-- [ ] 提供更多开箱即用的工具类，如分页、排序、搜索等
-- [ ] 提供更多开箱即用的组件，如数据库、缓存、队列等
-
-
-## 写在最后
-
-本项目的功能还在开发中，可能相关的API还不稳定，随时可能调整。在使用的时候注意版本号。
-另外，本项目是基于FastAPI的，所以需要熟悉FastAPI的开发者使用起来会更加得心应手。
-本项目的测试部分有部分是基于AI生成的，可能存在一些问题，请谨慎使用。
-
----
-
-⭐ 如果这个项目对你有帮助，请考虑给我们一个 Star！
-
-## 配置文件格式支持
-
-FastAPI Keystone 支持以下配置文件格式：
-
-- `.json`（如 `config.example.json`）
-- `.yaml` 或 `.yml`（如 `config.example.yaml`）
-
-配置内容结构完全一致，推荐使用 YAML 或 JSON 任选其一。
-
-### YAML 配置示例
-
-```yaml
-server:
-  host: 0.0.0.0
-  port: 8080
-  reload: false
-  workers: 1
-  run_mode: dev
-  title: FastAPI Keystone
-  description: FastAPI Keystone
-  version: 0.0.1
-
-logger:
-  enable: true
-  level: info
-  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-  file: logs/app.log
-  console: true
-
-databases:
-  default:
-    enable: true
-    host: 127.0.0.1
-    port: 5432
-    user: postgres
-    password: postgres
-    database: fastapi_keystone
-  main:
-    enable: true
-    host: 127.0.0.1
-    port: 5432
-    user: postgres
-    password: postgres
-    database: fastapi_keystone
-
-redis:
-  host: 127.0.0.1
-  port: 6379
-  password: null
-  database: 0
-  max_connections: 10
-  enable: true
-
-email:
-  smtp_host: smtp.gmail.com
-  smtp_port: 587
-  username: your_email@gmail.com
-  password: your_password
-  use_tls: true
-  from_address: noreply@example.com
-
-cache:
-  type: redis
-  ttl: 3600
-  prefix: fastapi_keystone:
-  enable_compression: false
-
-auth:
-  secret_key: your-secret-key-here
-  algorithm: HS256
-  access_token_expire_minutes: 30
-  refresh_token_expire_days: 7
-  enable_refresh_token: true
-```
-
-### 加载配置用法
-
-```python
-from fastapi_keystone.config import load_config
-
-# 自动根据后缀选择解析方式
-config = load_config("config.example.yaml")
-# 或
-config = load_config("config.example.json")
-```
+- **GitHub**: https://github.com/alphaqiu/fastapi-keystone
+- **PyPI**: https://pypi.org/project/fastapi-keystone/
+- **文档**: https://github.com/alphaqiu/fastapi-keystone#readme
+- **问题反馈**: https://github.com/alphaqiu/fastapi-keystone/issues

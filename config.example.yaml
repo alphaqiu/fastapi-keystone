@@ -7,6 +7,28 @@ server:
   title: FastAPI Keystone
   description: FastAPI Keystone
   version: 0.0.1
+  tenant_enabled: true
+  middleware:
+    trusted_host:
+      enabled: true
+      allowed_hosts: ["*"]
+      www_redirect: true
+    simple_trace:
+      enabled: true
+    etag:
+      enabled: true
+    hsts:
+      enabled: false
+    force_https: false
+    gzip:
+      enabled: true
+      minimum_size: 1024
+    cors:
+      enabled: true
+      allow_credentials: true
+      allow_origins: ["*"]
+      allow_methods: ["*"]
+      allow_headers: ["*"]
 
 logger:
   enable: true

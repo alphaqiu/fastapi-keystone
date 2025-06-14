@@ -1,0 +1,40 @@
+{
+    "server": {
+        "host": "127.0.0.1",
+        "port": 8080,
+        "reload": false,
+        "workers": 1,
+        "run_mode": "dev",
+        "title": "FastAPI Keystone demo",
+        "description": "FastAPI Keystone demo",
+        "version": "0.1.0"
+    },
+
+    "logger": {
+        "enable": true,
+        "level": "info",
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        "file": "logs/app.log",
+        "console": true
+    },
+
+    "databases": {
+        "default": {
+            "enable": true,
+            "host": "127.0.0.1",
+            "port": 5432,
+            "user": "postgres",
+            "password": "postgres",
+            "database": "fastapi_keystone"
+        },
+
+        "main": {
+            "enable": true,
+            "host": "127.0.0.1",
+            "port": 5432,
+            "user": "postgres",
+            "password": "postgres",
+            "database": "fastapi_keystone"
+        }
+    }
+}

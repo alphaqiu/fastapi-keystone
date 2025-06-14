@@ -95,7 +95,10 @@ uv pip install pyyaml     # 安装 YAML 支持
   ```python
   from fastapi_keystone.config.config import Config
   from fastapi_keystone.core.server import Server
+
   ```
+  所有生成的测试代码，统一都放到 tests/ 目录下， 不要删除。
+  
 - **pytest 配置**：`pyproject.toml` 中设置 `pythonpath = ["src"]`
 - **测试规范补充**：
   - 所有关键配置加载测试需覆盖 JSON/YAML 两种格式，确保行为一致

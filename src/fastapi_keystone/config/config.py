@@ -53,7 +53,7 @@ See below for detailed field explanations in each config class.
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Dict, List, Optional, Type, TypeVar
 
 import yaml
 from pydantic import Field, RootModel, ValidationError, field_validator
@@ -84,6 +84,113 @@ class RunMode(str, Enum):
     PROD = "prod"
 
 
+class TrustedHostConfig(BaseSettings):
+    """
+    Trusted host middleware configuration.
+
+    Attributes:
+        enabled (bool): Whether to enable trusted host middleware
+        allowed_hosts (List[str]): List of allowed hosts
+        www_redirect (bool): Whether to redirect www subdomain
+    """
+
+    enabled: bool = Field(default=True, description="Whether to enable trusted host middleware")
+    allowed_hosts: List[str] = Field(default=["*"], description="List of allowed hosts")
+    www_redirect: bool = Field(default=True, description="Whether to redirect www subdomain")
+
+
+class SimpleTraceConfig(BaseSettings):
+    """
+    Simple trace middleware configuration.
+
+    Attributes:
+        enabled (bool): Whether to enable simple trace middleware
+    """
+
+    enabled: bool = Field(default=True, description="Whether to enable simple trace middleware")
+
+
+class EtagConfig(BaseSettings):
+    """
+    ETag middleware configuration.
+
+    Attributes:
+        enabled (bool): Whether to enable ETag middleware
+    """
+
+    enabled: bool = Field(default=True, description="Whether to enable ETag middleware")
+
+
+class HstsConfig(BaseSettings):
+    """
+    HSTS middleware configuration.
+
+    Attributes:
+        enabled (bool): Whether to enable HSTS middleware
+    """
+
+    enabled: bool = Field(default=True, description="Whether to enable HSTS middleware")
+
+
+class GzipConfig(BaseSettings):
+    """
+    Gzip compression middleware configuration.
+
+    Attributes:
+        enabled (bool): Whether to enable Gzip compression
+        minimum_size (int): Minimum response size to compress
+    """
+
+    enabled: bool = Field(default=True, description="Whether to enable Gzip compression")
+    minimum_size: int = Field(default=1024, description="Minimum response size to compress")
+
+
+class CorsConfig(BaseSettings):
+    """
+    CORS middleware configuration.
+
+    Attributes:
+        enabled (bool): Whether to enable CORS middleware
+        allow_credentials (bool): Whether to allow credentials
+        allow_origins (List[str]): List of allowed origins
+        allow_methods (List[str]): List of allowed methods
+        allow_headers (List[str]): List of allowed headers
+    """
+
+    enabled: bool = Field(default=True, description="Whether to enable CORS middleware")
+    allow_credentials: bool = Field(default=True, description="Whether to allow credentials")
+    allow_origins: List[str] = Field(default=["*"], description="List of allowed origins")
+    allow_methods: List[str] = Field(default=["*"], description="List of allowed methods")
+    allow_headers: List[str] = Field(default=["*"], description="List of allowed headers")
+
+
+class MiddlewareConfig(BaseSettings):
+    """
+    Middleware configuration container.
+
+    Attributes:
+        trusted_host (Optional[TrustedHostConfig]): Trusted host middleware config
+        simple_trace (Optional[SimpleTraceConfig]): Simple trace middleware config
+        etag (Optional[EtagConfig]): ETag middleware config
+        hsts (Optional[HstsConfig]): HSTS middleware config
+        force_https (bool): Whether to force HTTPS redirect
+        gzip (Optional[GzipConfig]): Gzip compression config
+        cors (Optional[CorsConfig]): CORS middleware config
+    """
+
+    trusted_host: Optional[TrustedHostConfig] = Field(
+        default=None, description="Trusted host middleware config"
+    )
+    simple_trace: Optional[SimpleTraceConfig] = Field(
+        default=None, description="Simple trace middleware config"
+    )
+    etag: Optional[EtagConfig] = Field(default=None, description="ETag middleware config")
+    hsts: Optional[HstsConfig] = Field(default=None, description="HSTS middleware config")
+    force_https: bool = Field(default=False, description="Whether to force HTTPS redirect")
+    gzip: Optional[GzipConfig] = Field(default=None, description="Gzip compression config")
+    cors: Optional[CorsConfig] = Field(default=None, description="CORS middleware config")
+
+
 class ServerConfig(BaseSettings):
     """
     Server base configuration.
@@ -100,6 +207,7 @@ class ServerConfig(BaseSettings):
         description (str): API documentation description
         version (str): API version
         tenant_enabled (bool): Enable multi-tenancy
+        middleware (MiddlewareConfig): Middleware configuration
     """
 
     model_config = SettingsConfigDict(
@@ -130,6 +238,9 @@ class ServerConfig(BaseSettings):
     )
     version: str = Field(default="0.0.1", description="API version")
     tenant_enabled: bool = Field(default=False, description="Enable multi-tenancy")
+    middleware: MiddlewareConfig = Field(
+        default_factory=MiddlewareConfig, description="Middleware configuration"
+    )
 
 
 class LoggerConfig(BaseSettings):

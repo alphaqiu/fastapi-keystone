@@ -26,20 +26,17 @@ class ContextDict(TypedDict):
     tenant information, and arbitrary values.
 
     Attributes:
-        etag_enabled (Optional[bool]): Whether ETag processing is enabled for this request.
         x_request_id (Optional[str]): Unique request identifier (e.g., ULID).
         value (Optional[Any]): Arbitrary value for middleware or handler use.
         tenant_id (Optional[str]): Tenant identifier for multi-tenant scenarios.
 
     Example:
         request_context.set({
-            "etag_enabled": True,
             "x_request_id": "01H...ULID...",
             "tenant_id": "tenant-123"
         })
     """
 
-    etag_enabled: NotRequired[bool]
     x_request_id: NotRequired[str]
     value: NotRequired[Any]
     tenant_id: NotRequired[str]
@@ -113,10 +110,22 @@ class SimpleTraceMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start_time = time.time()
-        ulid = ULID.from_timestamp(start_time)
-        token = request_context.set({"x_request_id": str(ulid)})
+        request_id = request.headers.get("X-Request-ID")
+        if not request_id or request_id == "":
+            ulid = ULID.from_timestamp(start_time)
+            request_id = str(ulid)
 
+        try:
+            ctx: ContextDict = request_context.get()
+        except LookupError:
+            ctx = {}
+
+        ctx["x_request_id"] = request_id
+        token = request_context.set(ctx)
+
+        print("simple trace middleware start")
         response = await call_next(request)
+        print("simple trace middleware end")
 
         end_time = time.time()
         if self.logger is not None:
@@ -124,13 +133,13 @@ class SimpleTraceMiddleware(BaseHTTPMiddleware):
                 (
                     f"{request.method.upper()} {request.url.path} "
                     f"Time elapsed:{end_time - start_time:.2f}s "
-                    f"ULID:{str(ulid)}"
+                    f"Request ID:{request_id}"
                 )
             )
 
         headers: MutableHeaders = response.headers
         headers.append("X-Time-Elapsed", f"{end_time - start_time:.2f}s")
-        headers.append("X-Request-ID", str(ulid))
+        headers.append("X-Request-ID", request_id)
 
         request_context.reset(token)
         return response
@@ -146,71 +155,147 @@ class EtagMiddleware:
 
     Args:
         app (ASGIApp): The ASGI application instance.
+        max_content_length (int): Maximum content length to process ETag (default: 1MB)
 
     Example:
-        app.add_middleware(EtagMiddleware)
+        app.add_middleware(EtagMiddleware, max_content_length=1024*1024)
         # Enable ETag in request context before response
         request_context.set({"etag_enabled": True})
     """
 
-    def __init__(self, app: ASGIApp):
+    def __init__(self, app: ASGIApp, max_content_length: int = 1024 * 1024):
         self.app = app
+        self.max_content_length = max_content_length
+
+    async def _process_etag_response(
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        start_message: Optional[Message],
+        body: bytes,
+        if_none_match: Optional[str],
+    ) -> None:
+        """处理ETag响应"""
+        if not start_message:
+            return
+
+        # 计算ETag
+        etag: str = hashlib.sha256(body).hexdigest()[:32]
+
+        # 检查是否匹配
+        if if_none_match and if_none_match.strip('"') == etag:
+            # 返回304 Not Modified，但保留原有的响应头
+            # 修改原始响应的状态码而不是创建新响应，以保留其他中间件添加的头部
+            headers = MutableHeaders(scope=start_message)
+            headers["etag"] = etag
+
+            # 修改状态码为304
+            start_message_304 = {
+                **start_message,
+                "status": status.HTTP_304_NOT_MODIFIED,
+            }
+
+            # 发送修改后的start消息
+            await send(start_message_304)
+            # 304响应不应该有响应体
+            await send({"type": "http.response.body", "body": b"", "more_body": False})
+            return
+
+        # 修改响应头添加ETag
+        headers = MutableHeaders(scope=start_message)
+        headers["etag"] = etag
+
+        # 发送响应
+        await send(start_message)
+        await send({"type": "http.response.body", "body": body, "more_body": False})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
-        ctx: ContextDict = request_context.get()
-        if ctx.get("etag_enabled", False) is False:
-            await self.app(scope, receive, send)
-            return
-
         request = Request(scope, receive=receive)
-        response_start: Message = {}
-        response_body: bytes = b""
-        headers: MutableHeaders = MutableHeaders(scope=scope)
-
-        send_buffer = []
-
-        async def send_wrapper(message: Message):
-            nonlocal response_start, response_body, headers
-            if message["type"] == "http.response.start":
-                response_start = message
-                headers = MutableHeaders(scope=message)
-            elif message["type"] == "http.response.body":
-                response_body += message.get("body", b"")
-            send_buffer.append(message)
-
-        await self.app(scope, receive, send_wrapper)
-
-        # 只处理 application/json
-        if not response_start or not headers:
-            for message in send_buffer:
-                await send(message)
-            return
-
-        content_type = headers.get("content-type", "")
-        if not content_type.startswith("application/json"):
-            for message in send_buffer:
-                await send(message)
-            return
-
-        # 计算 ETag
-        etag = hashlib.sha256(response_body).hexdigest()[:32]
         if_none_match = request.headers.get("if-none-match")
 
-        if if_none_match == etag:
-            # 内容未变，返回 304
-            response = Response(status_code=304)
-            await response(scope, receive, send)
-            return
-        else:
-            # 设置新的 ETag
-            headers["etag"] = etag
-            for message in send_buffer:
-                await send(message)
-            return
+        # 用于收集响应信息
+        response_start_message: Optional[Message] = None
+        response_body = b""
+        content_length = 0
+        is_json_response = False
+        etag_should_process = False
+
+        async def send_wrapper(message: Message) -> None:
+            nonlocal response_start_message, response_body, content_length
+            nonlocal is_json_response, etag_should_process
+
+            if message["type"] == "http.response.start":
+                response_start_message = message
+                headers = MutableHeaders(scope=message)
+                content_type: str = headers.get("content-type", "")
+                is_json_response = content_type.startswith("application/json")
+
+                # 只有当满足条件时才处理ETag
+                etag_should_process = (
+                    is_json_response
+                    and message.get("status", status.HTTP_200_OK)
+                    == status.HTTP_200_OK  # 只对200状态码处理ETag
+                )
+
+                if not etag_should_process:
+                    # 直接转发消息
+                    await send(message)
+                return
+
+            elif message["type"] == "http.response.body":
+                if not etag_should_process:
+                    # 直接转发消息
+                    await send(message)
+                    return
+
+                body = message.get("body", b"")
+
+                # 收集响应体用于ETag计算
+                content_length += len(body)
+
+                # 如果内容太大，放弃ETag处理，直接转发
+                if content_length > self.max_content_length:
+                    # 发送之前收集的start消息（如果还没发送）
+                    if response_start_message:
+                        await send(response_start_message)
+                        response_start_message = None
+
+                    # 发送已收集的body
+                    if response_body:
+                        await send(
+                            {
+                                "type": "http.response.body",
+                                "body": response_body,
+                                "more_body": True,
+                            }
+                        )
+
+                    # 发送当前body
+                    await send(message)
+                    etag_should_process = False
+                    return
+
+                response_body += body
+
+                # 如果这是最后一个body消息，处理ETag
+                if not message.get("more_body", False):
+                    await self._process_etag_response(
+                        scope,
+                        receive,
+                        send,
+                        response_start_message,
+                        response_body,
+                        if_none_match,
+                    )
+
+        print("etag middleware start")
+        await self.app(scope, receive, send_wrapper)
+        print("etag middleware end")
 
 
 class TenantMiddleware:

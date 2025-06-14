@@ -20,7 +20,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import BaseRoute
 from typing_extensions import Doc
 
-from fastapi_keystone.core import AppManagerProtocol
+from fastapi_keystone.core.app import AppManagerProtocol
 
 
 class RouteConfig(BaseModel):
@@ -592,9 +592,21 @@ def bind_method_to_instance(method, instance):
     new_params = params[1:]
     new_sig = sig.replace(parameters=new_params)
 
-    @wraps(method)
-    def wrapper(*args, **kwargs):
-        return method(instance, *args, **kwargs)
+    # 检查原始方法是否是协程函数
+    if inspect.iscoroutinefunction(method):
+
+        @wraps(method)
+        async def async_wrapper(*args, **kwargs):
+            return await method(instance, *args, **kwargs)
+
+        wrapper = async_wrapper
+    else:
+
+        @wraps(method)
+        def sync_wrapper(*args, **kwargs):
+            return method(instance, *args, **kwargs)
+
+        wrapper = sync_wrapper
 
     setattr(wrapper, "__signature__", new_sig)  # 让 FastAPI 看到没有 self 的签名
     setattr(wrapper, "__annotations__", method.__annotations__)
